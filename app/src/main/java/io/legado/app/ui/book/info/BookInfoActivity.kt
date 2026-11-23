@@ -275,6 +275,7 @@ class BookInfoActivity :
         // 这里调高纸色遮盖让"删除书籍"区域压住底下字形，保留毛玻璃的模糊色块质感。
         binding.flActionFrost.tintAlpha = 0.60f
         binding.flActionFrost.blurDivisor = 10
+        binding.flActionFrost.showEdge = false
         binding.tvShelf.setTextColor(getPrimaryTextColor(ColorUtils.isColorLight(bottomBackground)))
         binding.tvToc.text = getString(R.string.toc_s, getString(R.string.loading))
         viewModel.bookData.observe(this) { showBook(it) }

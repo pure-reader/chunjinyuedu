@@ -84,6 +84,13 @@ class ArchiveFrostedView @JvmOverloads constructor(
             capture()
         }
 
+    /** 是否画整条外缘收边。主导航胶囊需要；详情页内部已有两个按钮各自的描边，关掉避免双层框。 */
+    var showEdge: Boolean = true
+        set(value) {
+            field = value
+            invalidate()
+        }
+
     private val surfaceColor: Int
         get() = ContextCompat.getColor(context, R.color.background_menu)
 
@@ -178,17 +185,20 @@ class ArchiveFrostedView @JvmOverloads constructor(
 
         canvas.restoreToCount(save)
 
-        // 边缘：上缘偏亮、下缘偏暗，形成一条有厚度的玻璃收边
-        stroke.color = withAlpha(Color.WHITE, 0.55f)
-        canvas.save()
-        canvas.clipRect(0f, 0f, w, h * 0.5f)
-        canvas.drawRoundRect(0f, 0f, w, h, cornerRadius, cornerRadius, stroke)
-        canvas.restore()
-        stroke.color = withAlpha(lineColor, 0.55f)
-        canvas.save()
-        canvas.clipRect(0f, h * 0.5f, w, h)
-        canvas.drawRoundRect(0f, 0f, w, h, cornerRadius, cornerRadius, stroke)
-        canvas.restore()
+        // 边缘：上缘偏亮、下缘偏暗，形成一条有厚度的玻璃收边。
+        // 详情页内部两个按钮已各有描边，关掉外层收边避免"双层框"。
+        if (showEdge) {
+            stroke.color = withAlpha(Color.WHITE, 0.55f)
+            canvas.save()
+            canvas.clipRect(0f, 0f, w, h * 0.5f)
+            canvas.drawRoundRect(0f, 0f, w, h, cornerRadius, cornerRadius, stroke)
+            canvas.restore()
+            stroke.color = withAlpha(lineColor, 0.55f)
+            canvas.save()
+            canvas.clipRect(0f, h * 0.5f, w, h)
+            canvas.drawRoundRect(0f, 0f, w, h, cornerRadius, cornerRadius, stroke)
+            canvas.restore()
+        }
     }
 
     override fun onDetachedFromWindow() {
