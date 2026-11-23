@@ -14,6 +14,8 @@
     <color name="background">#191919</color>
     <color name="background_card">#242424</color>
     <color name="background_menu">#2D2D2D</color>
+    <color name="background_pill_glass">#472D2D2D</color>
+    <color name="background_pill_ghost">#302D2D2D</color>
     <color name="background_prefs">#10303030</color>
 
     <color name="night_mask">#69000000</color>

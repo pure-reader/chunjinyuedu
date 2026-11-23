@@ -271,6 +271,10 @@ class BookInfoActivity :
         binding.flAction.setBackgroundColor(android.graphics.Color.TRANSPARENT)
         binding.vwBg.applyNavigationBarPadding()
         binding.flActionFrost.attachTo(binding.scrollView)
+        // 详情页底部压着静止的章节目录，主导航用的 0.30 tint 太透会文字重叠，
+        // 这里调高纸色遮盖让"删除书籍"区域压住底下字形，保留毛玻璃的模糊色块质感。
+        binding.flActionFrost.tintAlpha = 0.60f
+        binding.flActionFrost.blurDivisor = 10
         binding.tvShelf.setTextColor(getPrimaryTextColor(ColorUtils.isColorLight(bottomBackground)))
         binding.tvToc.text = getString(R.string.toc_s, getString(R.string.loading))
         viewModel.bookData.observe(this) { showBook(it) }

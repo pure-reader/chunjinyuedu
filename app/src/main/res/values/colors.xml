@@ -24,6 +24,10 @@
     <color name="background">#F4F3EF</color>
     <color name="background_card">#FDFCFA</color>
     <color name="background_menu">#EDECE6</color>
+    <!-- 详情页"继续阅读"胶囊：半透明纸色，透出底下毛玻璃 -->
+    <color name="background_pill_glass">#47EDECE6</color>
+    <!-- "删除书籍"次级按钮：更淡的半透明纸底，压住底下章节字影但保留玻璃感 -->
+    <color name="background_pill_ghost">#30EDECE6</color>
     <color name="background_prefs">#7FFDFCFA</color>
 
     <color name="transparent">#00000000</color>

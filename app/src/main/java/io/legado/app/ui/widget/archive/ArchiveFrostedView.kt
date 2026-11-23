@@ -67,6 +67,23 @@ class ArchiveFrostedView @JvmOverloads constructor(
             invalidate()
         }
 
+    /**
+     * 纸色 tint 遮盖强度。主导航胶囊压在滚动列表上，0.30 能透出内容色块；
+     * 图书详情页压着静止的章节目录，需要更高值（0.52）压住字形避免文字重叠。
+     */
+    var tintAlpha: Float = 0.30f
+        set(value) {
+            field = value.coerceIn(0f, 1f)
+            invalidate()
+        }
+
+    /** 降采样倍率：越大越糊。主导航 6 保留可辨识色块；详情页 10 把静止字形彻底糊掉。 */
+    var blurDivisor: Int = 6
+        set(value) {
+            field = value.coerceIn(2, 20)
+            capture()
+        }
+
     private val surfaceColor: Int
         get() = ContextCompat.getColor(context, R.color.background_menu)
 
@@ -103,8 +120,8 @@ class ArchiveFrostedView @JvmOverloads constructor(
         getLocationInWindow(loc)
         val src = Rect(loc[0], loc[1], loc[0] + width, loc[1] + height)
         // 直接拷到 1/6 尺寸：一步完成降采样，放大回去自带模糊（毛玻璃）
-        val bw = (width / 6).toInt().coerceAtLeast(1)
-        val bh = (height / 6).toInt().coerceAtLeast(1)
+        val bw = (width / blurDivisor).toInt().coerceAtLeast(1)
+        val bh = (height / blurDivisor).toInt().coerceAtLeast(1)
         val bmp = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888)
         runCatching {
             PixelCopy.request(
@@ -146,8 +163,8 @@ class ArchiveFrostedView @JvmOverloads constructor(
         }
 
         // 纸色 tint：压住底下的字形轮廓，只留色块，才是玻璃而不是半透明蒙版。
-        // 0.30 让滚动内容透得出来；原来 0.66 几乎全白，看不出毛玻璃。
-        tint.color = withAlpha(surfaceColor, 0.30f)
+        // 默认 0.30 让滚动内容透得出来；详情页通过 tintAlpha 调高以压住静止文字。
+        tint.color = withAlpha(surfaceColor, tintAlpha)
         canvas.drawRect(0f, 0f, w, h, tint)
 
         // 玻璃厚度：顶部 45% 高度叠一层很淡的白，模拟受光面
