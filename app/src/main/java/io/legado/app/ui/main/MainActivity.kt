@@ -68,6 +68,7 @@ import io.legado.app.utils.dpToPx
 import io.legado.app.utils.getClipText
 import io.legado.app.utils.isCreated
 import io.legado.app.utils.imeHeight
+import io.legado.app.ui.widget.archive.PillNavInset
 import io.legado.app.utils.navigationBarHeight
 import io.legado.app.utils.observeEvent
 import io.legado.app.utils.setEdgeEffectColor
@@ -254,6 +255,9 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     }
 
     private fun initView() = binding.run {
+        // insets 还没派发前先用资源里的导航栏高度估一份底部预留，
+        // 等真实 inset 到达后 PillNavInset 会重新派发给已经接入的列表
+        PillNavInset.updateListReserve(this@MainActivity, this@MainActivity.navigationBarHeight)
         viewPagerMain.setEdgeEffectColor(primaryColor)
         viewPagerMain.offscreenPageLimit = 3
         viewPagerMain.adapter = adapter
@@ -270,22 +274,25 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         }
         bottomNavigationView.setOnApplyWindowInsetsListenerCompat { view, windowInsets ->
             val navHeight = windowInsets.navigationBarHeight
-            val pillMargin = (16 * resources.displayMetrics.density).toInt()
+            // 底部间距交给 PillNavInset 统一计算：三键导航完整避让系统栏，
+            // 手势导航只避让小白条的视觉高度，避免两种导航方式下胶囊高度差出一大截。
+            val pillMargin = PillNavInset.bottomMarginPx(this@MainActivity, navHeight)
             // 导航条高度用「外边距」把整个胶囊上移，不能塞进 BottomNavigationView 的 bottomPadding：
             // 后者会压缩它的内部内容区，在导航条较高的机型上把图标纵向压扁成一条线。
             (view.layoutParams as ViewGroup.MarginLayoutParams).let { lp ->
-                val target = pillMargin + navHeight
-                if (lp.bottomMargin != target) {
-                    lp.bottomMargin = target
+                if (lp.bottomMargin != pillMargin) {
+                    lp.bottomMargin = pillMargin
                     view.layoutParams = lp
                 }
             }
+            // 列表底部预留必须跟着胶囊的真实位置走，否则手机手势导航下最后一项被压住
+            PillNavInset.updateListReserve(this@MainActivity, navHeight)
             view.doOnLayout {
                 // 毛玻璃底座跟随导航真实高度，同样用外边距上移，保持与胶囊对齐
                 binding.bottomFrost.doOnLayout {
                     binding.bottomFrost.layoutParams =
                         (binding.bottomFrost.layoutParams as ViewGroup.MarginLayoutParams).apply {
-                            bottomMargin = pillMargin + navHeight
+                            bottomMargin = pillMargin
                             this.height = view.height
                         }
                     binding.bottomFrost.cornerRadius = view.height / 2f

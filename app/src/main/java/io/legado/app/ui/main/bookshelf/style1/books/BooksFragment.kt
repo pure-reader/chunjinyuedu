@@ -1,6 +1,7 @@
 package io.legado.app.ui.main.bookshelf.style1.books
 
 import android.annotation.SuppressLint
+import android.content.res.Configuration
 import android.graphics.Rect
 import android.os.Bundle
 import android.view.View
@@ -29,7 +30,6 @@ import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.book.info.BookInfoActivity
 import io.legado.app.ui.main.MainViewModel
-import io.legado.app.ui.widget.archive.ArchiveTokens
 import io.legado.app.ui.widget.archive.applyPillNavBottomInset
 import io.legado.app.utils.cnCompare
 import io.legado.app.utils.flowWithLifecycleAndDatabaseChangeFirst
@@ -96,6 +96,11 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
     private var itemCount = 0
     private var totalRows = 0
 
+    // 顶部书架随列表滚动的收起量（px）：0 = 完全展开
+    private var headerOffset = 0f
+    private var headerMaxOffset = 0f
+    private var pickInfoHeight = 0
+
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         arguments?.let {
             position = it.getInt("position", 0)
@@ -107,6 +112,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
         }
         initRecyclerView()
         initSpineShelf()
+        initHeaderCollapse()
         upRecyclerData()
     }
 
@@ -142,6 +148,59 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
                 rvBookshelf.postDelayed({ syncingFromPick = false }, 400L)
             }
         })
+    }
+
+    /**
+     * 顶部书架随列表滚动收起。
+     *
+     * 收起的量和列表滚动量严格相等（不做缓动动画）：列表往上滚 dy，头部同时矮 dy，
+     * 可视内容在屏幕上的位置才不会被顶得跳一下。先收书名/页码那一块，再压书脊高度。
+     */
+    private fun initHeaderCollapse() {
+        if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) return
+        if (binding.spineContainer == null || binding.pickInfo == null) return
+        binding.rvBookshelf.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
+                if (dy == 0) return
+                if (headerMaxOffset <= 0f) upHeaderMetrics()
+                if (headerMaxOffset <= 0f) return
+                val next = (headerOffset + dy).coerceIn(0f, headerMaxOffset)
+                if (next == headerOffset) return
+                headerOffset = next
+                applyHeaderOffset()
+            }
+        })
+    }
+
+    /** 信息块高度要等它量完才有，书单为空时第一次量到的是 0，所以每次滚动时补算 */
+    private fun upHeaderMetrics() {
+        val info = binding.pickInfo ?: return
+        if (info.height <= 0) return
+        pickInfoHeight = info.height
+        val density = resources.displayMetrics.density
+        headerMaxOffset = (90 * density) + pickInfoHeight
+    }
+
+    private fun applyHeaderOffset() {
+        val container = binding.spineContainer ?: return
+        val info = binding.pickInfo ?: return
+        val density = resources.displayMetrics.density
+        val shelfExpanded = 210f * density
+        val shelfMin = 120f * density
+        val infoTarget = (pickInfoHeight - headerOffset).coerceAtLeast(0f)
+        val shelfTarget = (shelfExpanded - (headerOffset - pickInfoHeight).coerceAtLeast(0f))
+            .coerceAtLeast(shelfMin)
+        val infoLp = info.layoutParams
+        if (infoLp.height != infoTarget.toInt()) {
+            infoLp.height = infoTarget.toInt()
+            info.alpha = if (pickInfoHeight > 0) infoTarget / pickInfoHeight else 0f
+            info.layoutParams = infoLp
+        }
+        val containerLp = container.layoutParams
+        if (containerLp.height != shelfTarget.toInt()) {
+            containerLp.height = shelfTarget.toInt()
+            container.layoutParams = containerLp
+        }
     }
 
     private fun stepPick(step: Int) {

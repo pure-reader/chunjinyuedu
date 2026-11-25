@@ -31,6 +31,12 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
+/** 封面位图缓存上限：一张 104x118dp 封面约 0.3~0.4MB，24 张约 10MB 封顶。 */
+private const val COVER_CACHE_MAX = 24
+
+/** 竖排书名截断用的省略号，避免每次拼字符串 */
+private const val ELLIPSIS = "…"
+
 /**
  * 档案风"书脊书架"。
  *
@@ -54,7 +60,40 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
     var onSettle: ((Int) -> Unit)? = null
 
     private val books = arrayListOf<Book>()
-    private val coverCache = HashMap<String, Bitmap?>()
+
+    /**
+     * 封面位图缓存，按访问顺序淘汰。
+     * 之前是无限增长的 HashMap，只在书单变化时清空，翻几百本书就会一直涨。
+     */
+    private val coverCache = object : LinkedHashMap<String, Bitmap?>(COVER_CACHE_MAX, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Bitmap?>?): Boolean =
+            size > COVER_CACHE_MAX
+    }
+
+    /** 每本书的静态文案，submit 时算一次，绘制时不再做字符串拼接 */
+    private class SpineLabel(
+        val ordinal: String,
+        val titleChars: CharArray,
+        val authorChars: CharArray,
+        val blankChars: CharArray,
+        val code: String,
+    )
+
+    private val labels = ArrayList<SpineLabel>()
+
+    // 绘制期复用的缓冲，避免每帧分配
+    private var drawOrder = IntArray(0)
+    private var orderCount = 0
+    private val tmpRect = RectF()
+    private val srcRect = Rect()
+    private var shadowShader: LinearGradient? = null
+    private var coverShadowShader: LinearGradient? = null
+    private var fadeLeftShader: LinearGradient? = null
+    private var fadeRightShader: LinearGradient? = null
+    private var fadeBuiltWidth = -1
+    private val innerStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+    }
 
     private val density = resources.displayMetrics.density
     private fun dp(value: Float) = value * density
@@ -74,8 +113,9 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
         isFilterBitmap = true
         isAntiAlias = true
     }
+    private val serifTypeface = Typeface.create(Typeface.SERIF, Typeface.NORMAL)
     private val spineText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        typeface = Typeface.create(Typeface.SERIF, Typeface.NORMAL)
+        typeface = serifTypeface
         textAlign = Paint.Align.CENTER
     }
     private val codeText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -85,19 +125,27 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
     private val railPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val fadePaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-    private val ink: Int get() = ArchiveTokens.ink(context)
-    private val muted: Int get() = ArchiveTokens.muted(context)
-    private val paper: Int get() = ArchiveTokens.paper(context)
+    // 绘制热路径上不再查资源：颜色在 attach / 数据变化时刷一次
+    private var ink = 0
+    private var paper = 0
+    private var spinePaper = 0
+    private var spinePaperSelected = 0
+    private var coverPaper = 0
+    private var pageEdgeColor = 0
 
-    // 书脊纸面走颜色资源，夜间自动换成深色卡纸（见 values-night/colors.xml）。
-    private val spinePaper: Int
-        get() = ContextCompat.getColor(context, R.color.archive_spine_paper)
-    private val spinePaperSelected: Int
-        get() = ContextCompat.getColor(context, R.color.archive_spine_paper_selected)
-    private val coverPaper: Int
-        get() = ContextCompat.getColor(context, R.color.archive_cover_paper)
-    private val pageEdgeColor: Int
-        get() = ContextCompat.getColor(context, R.color.archive_page_edge)
+    /** 书脊纸面走颜色资源，夜间自动换成深色卡纸（见 values-night/colors.xml）。 */
+    private fun refreshColors() {
+        ink = ArchiveTokens.ink(context)
+        paper = ArchiveTokens.paper(context)
+        spinePaper = ContextCompat.getColor(context, R.color.archive_spine_paper)
+        spinePaperSelected = ContextCompat.getColor(context, R.color.archive_spine_paper_selected)
+        coverPaper = ContextCompat.getColor(context, R.color.archive_cover_paper)
+        pageEdgeColor = ContextCompat.getColor(context, R.color.archive_page_edge)
+        // 颜色变了，按色值建的渐变也要作废
+        fadeLeftShader = null
+        fadeRightShader = null
+        fadeBuiltWidth = -1
+    }
 
     private var offset = 0f
     private var selected = 0
@@ -159,6 +207,7 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
         isClickable = true
         isFocusable = true
         setLayerType(LAYER_TYPE_HARDWARE, null)
+        refreshColors()
     }
 
     // ---------------------------------------------------------------- 数据
@@ -168,11 +217,29 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
                 books.indices.all { books[it].bookUrl == list[it].bookUrl }
         books.clear()
         books.addAll(list)
+        rebuildLabels()
         if (selected >= books.size) selected = (books.size - 1).coerceAtLeast(0)
         offset = selected.toFloat()
         if (!same) coverCache.clear()
         prefetchCover(selected)
         invalidate()
+    }
+
+    /** 书单变化时把序号/书名/作者/编号一次算好，绘制时不再拼字符串 */
+    private fun rebuildLabels() {
+        labels.clear()
+        books.forEachIndexed { index, book ->
+            labels.add(
+                SpineLabel(
+                    ordinal = (index + 1).toString().padStart(2, '0'),
+                    titleChars = "\u300a${book.name}\u300b".toCharArray(),
+                    authorChars = (book.author ?: "").take(6).toCharArray(),
+                    blankChars = book.name.take(9).toCharArray(),
+                    code = ArchiveTokens.fileCode(book.bookUrl.hashCode().absoluteValue % 100000),
+                )
+            )
+        }
+        if (drawOrder.size < books.size) drawOrder = IntArray(books.size)
     }
 
     /** 由外部（下方列表滚动）同步选中项 */
@@ -229,9 +296,11 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
 
         drawRail(canvas, cx)
 
-        // 远的先画，近的后画（选中/相邻压在上面）
-        val order = books.indices.sortedByDescending { abs(it - offset) }
-        for (i in order) {
+        // 远的先画，近的后画（选中/相邻压在上面）。
+        // 顺序每帧都在变，用预先分配的 IntArray 就地插入排序，避免 sortedByDescending 的装箱
+        buildDrawOrder()
+        for (k in 0 until orderCount) {
+            val i = drawOrder[k]
             if (i == selected) continue
             val angle = ((i - offset) * 14f).coerceIn(-34f, 34f)
             val pivotX = spineLeft(i, cx) + spineWidth(i) / 2f
@@ -254,6 +323,22 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
         drawEdgeFade(canvas)
     }
 
+    /** 按离当前滚动位置由远到近填好绘制顺序，数组直接复用，长度见 orderCount */
+    private fun buildDrawOrder() {
+        val size = books.size
+        if (drawOrder.size < size) drawOrder = IntArray(size)
+        orderCount = size
+        for (i in 0 until size) {
+            val d = abs(i - offset)
+            var j = i
+            while (j > 0 && abs(drawOrder[j - 1] - offset) < d) {
+                drawOrder[j] = drawOrder[j - 1]
+                j--
+            }
+            drawOrder[j] = i
+        }
+    }
+
     private fun drawRail(canvas: Canvas, cx: Float) {
         railPaint.color = withAlpha(ink, 0.10f)
         railPaint.strokeWidth = max(1f, dp(0.8f))
@@ -261,7 +346,6 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
     }
 
     private fun drawSpine(canvas: Canvas, index: Int, cx: Float, focused: Boolean) {
-        val book = books[index]
         val left = spineLeft(index, cx)
         val right = left + spineWidth(index)
         if (right < -dp(40f) || left > width + dp(40f)) return
@@ -275,24 +359,27 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
         spineFill.color = if (focused) spinePaperSelected else spinePaper
         canvas.drawRect(spineRect, spineFill)
 
-        // 书脊侧边投影（越靠里越深）
-        shadowPaint.shader = LinearGradient(
-            left, 0f, left + dp(3f), 0f,
+        // 书脊侧边投影（越靠里越深）：渐变只建一次，靠平移复用
+        val shader = shadowShader ?: LinearGradient(
+            0f, 0f, dp(3f), 0f,
             intArrayOf(0x14000000, 0x00000000), null, Shader.TileMode.CLAMP
-        )
-        canvas.drawRect(RectF(left, top, left + dp(3f), bottom), shadowPaint)
-        shadowPaint.shader = null
+        ).also { shadowShader = it }
+        shadowPaint.shader = shader
+        val save = canvas.save()
+        canvas.translate(left, 0f)
+        tmpRect.set(0f, top, dp(3f), bottom)
+        canvas.drawRect(tmpRect, shadowPaint)
+        canvas.restoreToCount(save)
 
         spineStroke.color = withAlpha(ink, if (focused) 0.42f else 0.26f)
         canvas.drawRect(spineRect, spineStroke)
 
-        drawSpineText(canvas, book, index, left, right, top, bottom, focused)
+        labels.getOrNull(index)?.let { drawSpineText(canvas, it, left, right, top, bottom, focused) }
     }
 
     private fun drawSpineText(
         canvas: Canvas,
-        book: Book,
-        index: Int,
+        label: SpineLabel,
         left: Float,
         right: Float,
         top: Float,
@@ -300,38 +387,42 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
         focused: Boolean,
     ) {
         val centerX = (left + right) / 2f
-        val codeSize = dp(7f)
-        codeText.textSize = codeSize
-        codeText.color = withAlpha(ink, 0.55f)
 
         // 顶部横排序号
-        val ordinal = (index + 1).toString().padStart(2, '0')
-        canvas.drawText(ordinal, centerX, top + dp(14f), codeText)
+        codeText.textSize = dp(7f)
+        codeText.color = withAlpha(ink, 0.55f)
+        canvas.drawText(label.ordinal, centerX, top + dp(14f), codeText)
 
-        // 竖排书名
+        // 竖排书名：逐字绘制复用预生成的 CharArray，不再 toString() 分配
         val titleSize = if (focused) dp(9.5f) else dp(9f)
         spineText.textSize = titleSize
         spineText.color = withAlpha(ink, if (focused) 0.94f else 0.82f)
-        spineText.typeface = Typeface.create(Typeface.SERIF, Typeface.NORMAL)
-        val title = "《${book.name}》"
+        val titleChars = label.titleChars
         val maxChars = ((bottom - top - dp(46f)) / (titleSize + dp(2.4f))).toInt().coerceAtLeast(2)
-        val shown = if (title.length > maxChars) title.take(maxChars - 1) + "…" else title
+        val showCount = if (titleChars.size > maxChars) maxChars - 1 else titleChars.size
+        val step = titleSize + dp(2.4f)
         var y = top + dp(24f) + titleSize
-        for (ch in shown) {
-            canvas.drawText(ch.toString(), centerX, y, spineText)
-            y += titleSize + dp(2.4f)
+        var drawn = 0
+        while (drawn < showCount) {
+            canvas.drawText(titleChars, drawn, 1, centerX, y, spineText)
+            y += step
+            drawn++
+        }
+        if (titleChars.size > maxChars) {
+            canvas.drawText(ELLIPSIS, centerX, y, spineText)
         }
 
         // 底部作者（小字，靠下）
         val authorSize = dp(7f)
         spineText.textSize = authorSize
         spineText.color = withAlpha(ink, 0.50f)
-        val author = book.author ?: ""
-        val authorChars = author.take(6)
-        var ay = bottom - dp(10f) - (authorChars.length - 1) * (authorSize + dp(1.6f))
-        for (ch in authorChars) {
-            canvas.drawText(ch.toString(), centerX, ay, spineText)
+        val authorChars = label.authorChars
+        var ay = bottom - dp(10f) - (authorChars.size - 1) * (authorSize + dp(1.6f))
+        var ai = 0
+        while (ai < authorChars.size) {
+            canvas.drawText(authorChars, ai, 1, centerX, ay, spineText)
             ay += authorSize + dp(1.6f)
+            ai++
         }
     }
 
@@ -352,13 +443,17 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
             canvas.drawRect(x, top + dp(3f) + i * dp(0.8f), x + dp(1.2f), bottom - i * dp(0.8f), pageEdge)
         }
 
-        // 封面投影
-        shadowPaint.shader = LinearGradient(
-            right, 0f, right + dp(14f), 0f,
+        // 封面投影：同样是「建一次渐变 + 平移复用」
+        val shader = coverShadowShader ?: LinearGradient(
+            0f, 0f, dp(14f), 0f,
             intArrayOf(0x33000000, 0x00000000), null, Shader.TileMode.CLAMP
-        )
-        canvas.drawRect(RectF(right, top + dp(2f), right + dp(14f), bottom + dp(4f)), shadowPaint)
-        shadowPaint.shader = null
+        ).also { coverShadowShader = it }
+        shadowPaint.shader = shader
+        val shadowSave = canvas.save()
+        canvas.translate(right, 0f)
+        tmpRect.set(0f, top + dp(2f), dp(14f), bottom + dp(4f))
+        canvas.drawRect(tmpRect, shadowPaint)
+        canvas.restoreToCount(shadowSave)
 
         coverRect.set(left, top, right, bottom)
 
@@ -368,10 +463,10 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
             clipPath.addRoundRect(coverRect, dp(2f), dp(2f), Path.Direction.CW)
             val save = canvas.save()
             canvas.clipPath(clipPath)
-            canvas.drawBitmap(bitmap, srcRectFor(bitmap, coverRect), coverRect, coverPaint)
+            canvas.drawBitmap(bitmap, srcRectFor(bitmap, coverRect, srcRect), coverRect, coverPaint)
             canvas.restoreToCount(save)
         } else {
-            drawBlankCover(canvas, book, coverRect)
+            drawBlankCover(canvas, index, coverRect)
             loadCover(book)
         }
 
@@ -383,7 +478,8 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
      * 没有封面图时画一张空白档案封皮：纸底 + 编号 + 竖排书名，
      * 比直接留白更像"档案盒里的一本书"。
      */
-    private fun drawBlankCover(canvas: Canvas, book: Book, rect: RectF) {
+    private fun drawBlankCover(canvas: Canvas, index: Int, rect: RectF) {
+        val label = labels.getOrNull(index) ?: return
         spineFill.color = coverPaper
         canvas.drawRoundRect(rect, dp(2f), dp(2f), spineFill)
 
@@ -391,26 +487,28 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
         canvas.drawRoundRect(rect, dp(2f), dp(2f), spineStroke)
 
         val inset = dp(7f)
-        val innerStroke = Paint(spineStroke).apply { color = withAlpha(ink, 0.14f) }
+        innerStrokePaint.color = withAlpha(ink, 0.14f)
+        innerStrokePaint.strokeWidth = spineStroke.strokeWidth
         canvas.drawRect(
             rect.left + inset, rect.top + inset,
             rect.right - inset, rect.bottom - inset,
-            innerStroke
+            innerStrokePaint
         )
 
-        val code = ArchiveTokens.fileCode(book.bookUrl.hashCode().absoluteValue % 100000)
         codeText.textSize = dp(7f)
         codeText.color = withAlpha(ink, 0.5f)
-        canvas.drawText(code, rect.centerX(), rect.top + dp(22f), codeText)
+        canvas.drawText(label.code, rect.centerX(), rect.top + dp(22f), codeText)
 
         spineText.textSize = dp(13f)
         spineText.color = withAlpha(ink, 0.8f)
-        val title = book.name.take(9)
+        val chars = label.blankChars
         val step = dp(17f)
-        var ty = rect.top + (rect.height() - title.length * step) / 2f + dp(16f)
-        for (ch in title) {
-            canvas.drawText(ch.toString(), rect.centerX(), ty, spineText)
+        var ty = rect.top + (rect.height() - chars.size * step) / 2f + dp(16f)
+        var i = 0
+        while (i < chars.size) {
+            canvas.drawText(chars, i, 1, rect.centerX(), ty, spineText)
             ty += step
+            i++
         }
 
         railPaint.color = withAlpha(ink, 0.18f)
@@ -421,7 +519,7 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
         )
     }
 
-    private fun srcRectFor(bitmap: Bitmap, dst: RectF): Rect {
+    private fun srcRectFor(bitmap: Bitmap, dst: RectF, out: Rect): Rect {
         val bw = bitmap.width.toFloat()
         val bh = bitmap.height.toFloat()
         val scale = max(dst.width() / bw, dst.height() / bh)
@@ -429,21 +527,27 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
         val sh = dst.height() / scale
         val sx = (bw - sw) / 2f
         val sy = (bh - sh) / 2f
-        return Rect(sx.toInt(), sy.toInt(), (sx + sw).toInt(), (sy + sh).toInt())
+        out.set(sx.toInt(), sy.toInt(), (sx + sw).toInt(), (sy + sh).toInt())
+        return out
     }
 
     private fun drawEdgeFade(canvas: Canvas) {
-        // 左右两端让书脊淡出，避免硬边
+        // 左右两端让书脊淡出，避免硬边；渐变按宽度缓存，尺寸不变就不再重建
         val fadeW = dp(26f)
-        fadePaint.shader = LinearGradient(
-            0f, 0f, fadeW, 0f,
-            intArrayOf(paper, withAlpha(paper, 0f)), null, Shader.TileMode.CLAMP
-        )
+        if (fadeBuiltWidth != width || fadeLeftShader == null || fadeRightShader == null) {
+            fadeLeftShader = LinearGradient(
+                0f, 0f, fadeW, 0f,
+                intArrayOf(paper, withAlpha(paper, 0f)), null, Shader.TileMode.CLAMP
+            )
+            fadeRightShader = LinearGradient(
+                width - fadeW, 0f, width.toFloat(), 0f,
+                intArrayOf(withAlpha(paper, 0f), paper), null, Shader.TileMode.CLAMP
+            )
+            fadeBuiltWidth = width
+        }
+        fadePaint.shader = fadeLeftShader
         canvas.drawRect(0f, 0f, fadeW, height.toFloat(), fadePaint)
-        fadePaint.shader = LinearGradient(
-            width - fadeW, 0f, width.toFloat(), 0f,
-            intArrayOf(withAlpha(paper, 0f), paper), null, Shader.TileMode.CLAMP
-        )
+        fadePaint.shader = fadeRightShader
         canvas.drawRect(width - fadeW, 0f, width.toFloat(), height.toFloat(), fadePaint)
         fadePaint.shader = null
     }
@@ -587,6 +691,14 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
         } else if (settling) {
             finishSettle()
         }
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        // 主题/夜间模式变化后重新取色，绘制期就不用反复查资源了
+        refreshColors()
+        shadowShader = null
+        coverShadowShader = null
     }
 
     override fun onDetachedFromWindow() {
