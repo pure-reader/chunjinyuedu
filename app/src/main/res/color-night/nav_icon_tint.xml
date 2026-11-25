@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 深色模式：胶囊本身是深色玻璃，选中项必须反过来用浅色，否则几乎看不见 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="#F2F2F2" android:state_checked="true" />
+    <item android:color="#9C9C97" />
+</selector>

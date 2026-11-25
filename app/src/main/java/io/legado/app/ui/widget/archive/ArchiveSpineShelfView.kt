@@ -19,9 +19,11 @@ import android.view.VelocityTracker
 import android.view.View
 import android.view.ViewConfiguration
 import android.widget.OverScroller
+import androidx.core.content.ContextCompat
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
+import io.legado.app.R
 import io.legado.app.data.entities.Book
 import kotlin.math.abs
 import kotlin.math.absoluteValue
@@ -86,6 +88,16 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
     private val ink: Int get() = ArchiveTokens.ink(context)
     private val muted: Int get() = ArchiveTokens.muted(context)
     private val paper: Int get() = ArchiveTokens.paper(context)
+
+    // 书脊纸面走颜色资源，夜间自动换成深色卡纸（见 values-night/colors.xml）。
+    private val spinePaper: Int
+        get() = ContextCompat.getColor(context, R.color.archive_spine_paper)
+    private val spinePaperSelected: Int
+        get() = ContextCompat.getColor(context, R.color.archive_spine_paper_selected)
+    private val coverPaper: Int
+        get() = ContextCompat.getColor(context, R.color.archive_cover_paper)
+    private val pageEdgeColor: Int
+        get() = ContextCompat.getColor(context, R.color.archive_page_edge)
 
     private var offset = 0f
     private var selected = 0
@@ -260,7 +272,7 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
         spineRect.set(left, top, right, bottom)
 
         // 书脊纸面
-        spineFill.color = if (focused) 0xFFFDFCFA.toInt() else 0xFFFAF9F5.toInt()
+        spineFill.color = if (focused) spinePaperSelected else spinePaper
         canvas.drawRect(spineRect, spineFill)
 
         // 书脊侧边投影（越靠里越深）
@@ -334,7 +346,7 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
         val bottom = baseY - dp(2f)
 
         // 书页厚度：右缘三层细线
-        pageEdge.color = 0xFFFFFFFF.toInt()
+        pageEdge.color = pageEdgeColor
         for (i in 0 until 3) {
             val x = right + dp(1.4f) * (i + 1)
             canvas.drawRect(x, top + dp(3f) + i * dp(0.8f), x + dp(1.2f), bottom - i * dp(0.8f), pageEdge)
@@ -372,7 +384,7 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
      * 比直接留白更像"档案盒里的一本书"。
      */
     private fun drawBlankCover(canvas: Canvas, book: Book, rect: RectF) {
-        spineFill.color = 0xFFF1EEE3.toInt()
+        spineFill.color = coverPaper
         canvas.drawRoundRect(rect, dp(2f), dp(2f), spineFill)
 
         spineStroke.color = withAlpha(ink, 0.22f)

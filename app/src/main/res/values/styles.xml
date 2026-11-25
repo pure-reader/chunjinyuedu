@@ -94,6 +94,16 @@
         <item name="android:textSize">20sp</item>
     </style>
 
+    <!--
+      底部胶囊导航的文字标签。
+      Material 默认 12sp，在 64dp 高的胶囊里会把标签挤到只剩几个像素；
+      这里压到 10sp 并去掉字体额外留白，配合胶囊加高到 72dp 保证可读。
+    -->
+    <style name="PillNavLabel" parent="@style/TextAppearance.AppCompat.Caption">
+        <item name="android:textSize">10sp</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
     //*******************Widget Style**********************************//
 
     <style name="Style.Shadow.Top" parent="android:Widget">

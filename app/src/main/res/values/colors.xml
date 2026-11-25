@@ -106,4 +106,10 @@
     <color name="reviewContentText">#CC1A1A17</color>
     <color name="reviewCardStroke">#161A1A17</color>
     <color name="reviewBadgeBg">#12607D71</color>
+
+    <!-- 书脊书架的纸面：浅色下是档案纸，深色见 values-night -->
+    <color name="archive_spine_paper">#FAF9F5</color>
+    <color name="archive_spine_paper_selected">#FDFCFA</color>
+    <color name="archive_cover_paper">#F1EEE3</color>
+    <color name="archive_page_edge">#FFFFFF</color>
 </resources>

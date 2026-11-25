@@ -2,9 +2,9 @@ package io.legado.app.ui.widget.archive
 
 import androidx.recyclerview.widget.RecyclerView
 
-// 悬浮胶囊导航占据的底部空间：胶囊高 64dp + 距屏幕底 16dp。
-// ViewPager 已扣除系统导航条高度，故在 Fragment 坐标系里胶囊固定占底部 80dp。
-private const val PILL_NAV_RESERVE_DP = 80
+// 悬浮胶囊导航占据的底部空间：胶囊高 80dp + 距屏幕底 16dp，再留 8dp 呼吸位。
+// ViewPager 已扣除系统导航条高度，故在 Fragment 坐标系里胶囊固定占底部 104dp。
+private const val PILL_NAV_RESERVE_DP = 104
 
 /**
  * 让主界面的滚动列表避开悬浮胶囊导航：

@@ -440,9 +440,10 @@
                             android:orientation="vertical"
                             android:visibility="gone" />
 
+                        <!-- 给悬浮操作栏（60dp + 16dp 外边距）留出空间，否则目录最后一行会被按钮压住 -->
                         <View
                             android:layout_width="match_parent"
-                            android:layout_height="28dp" />
+                            android:layout_height="88dp" />
 
                     </LinearLayout>
 
@@ -455,6 +456,15 @@
                 android:layout_width="match_parent"
                 android:layout_height="2dp"
                 android:layout_gravity="top" />
+
+            <!-- 底部渐隐遮罩：让滚动内容在操作栏前淡出，文字不会从半透明按钮后透出来 -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="150dp"
+                android:layout_gravity="bottom"
+                android:background="@drawable/bg_archive_bottom_scrim"
+                android:clickable="false"
+                android:focusable="false" />
 
             <FrameLayout
                 android:id="@+id/fl_action"

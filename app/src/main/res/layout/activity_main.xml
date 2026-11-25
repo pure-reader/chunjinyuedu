@@ -15,7 +15,7 @@
     <io.legado.app.ui.widget.archive.ArchiveFrostedView
         android:id="@+id/bottom_frost"
         android:layout_width="320dp"
-        android:layout_height="64dp"
+        android:layout_height="80dp"
         android:layout_gravity="bottom|center_horizontal"
         android:layout_marginBottom="16dp"
         tools:ignore="SpeakableTextPresentCheck" />
@@ -23,15 +23,17 @@
     <io.legado.app.lib.theme.view.ThemeBottomNavigationVIew
         android:id="@+id/bottom_navigation_view"
         android:layout_width="320dp"
-        android:layout_height="64dp"
+        android:layout_height="80dp"
         android:layout_gravity="bottom|center_horizontal"
         android:layout_marginBottom="16dp"
         android:background="@android:color/transparent"
-        android:minHeight="64dp"
+        android:minHeight="80dp"
         app:itemActiveIndicatorStyle="@color/transparent"
         app:itemBackground="@drawable/nav_item_bg"
         app:itemIconSize="20dp"
         app:itemIconTint="@color/nav_icon_tint"
+        app:itemTextAppearanceActive="@style/PillNavLabel"
+        app:itemTextAppearanceInactive="@style/PillNavLabel"
         app:itemTextColor="@color/nav_text_tint"
         app:labelVisibilityMode="labeled"
         app:menu="@menu/main_bnv" />
