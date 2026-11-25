@@ -154,7 +154,9 @@ class BadgeView @JvmOverloads constructor(
         if (highlight) {
             setBackgroundColor(context.accentColor)
         } else {
-            setBackgroundColor(context.getCompatColor(R.color.darker_gray))
+            // 之前用 darker_gray：灰底白字在浅色书架上像"禁用状态"。
+            // 换成浅卡纸底，徽章仍然弱于强调色，但读起来是信息而不是不可用。
+            setBackgroundColor(context.getCompatColor(R.color.archive_badge_neutral))
         }
     }
 

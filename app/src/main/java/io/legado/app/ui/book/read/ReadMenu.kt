@@ -661,7 +661,7 @@ class ReadMenu @JvmOverloads constructor(
             TypedValue.COMPLEX_UNIT_PX,
             chapterNameTextSize + if (chapterNameOnly) 2f * scaledDensity else 0f
         )
-        tvChapterUrl.alpha = if (chapterNameOnly && hasChapterUrl) 0f else 1f
+        tvChapterUrl.alpha = if (chapterNameOnly && hasChapterUrl) 0f else 0.7f
         if (hasChapterUrl) {
             tvChapterUrl.visible()
         } else {

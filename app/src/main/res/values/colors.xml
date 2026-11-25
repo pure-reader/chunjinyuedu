@@ -110,6 +110,8 @@
     <!-- 书脊书架的纸面：浅色下是档案纸，深色见 values-night -->
     <color name="archive_spine_paper">#FAF9F5</color>
     <color name="archive_spine_paper_selected">#FDFCFA</color>
+    <!-- 未读徽章的非高亮态：浅卡纸底 + 深字，避免灰底白字看着像禁用 -->
+    <color name="archive_badge_neutral">#E7E3D8</color>
     <color name="archive_cover_paper">#F1EEE3</color>
     <color name="archive_page_edge">#FFFFFF</color>
 </resources>

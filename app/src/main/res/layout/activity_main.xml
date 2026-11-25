@@ -11,6 +11,16 @@
         android:layout_height="match_parent"
         tools:ignore="SpeakableTextPresentCheck" />
 
+    <!-- 底部渐隐：滚动内容在胶囊上方淡出，避免列表文字从半透明玻璃里透出来和标签打架 -->
+    <View
+        android:id="@+id/nav_bottom_scrim"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/nav_bottom_scrim_height"
+        android:layout_gravity="bottom"
+        android:background="@drawable/bg_archive_bottom_scrim"
+        android:importantForAccessibility="no"
+        tools:ignore="SpeakableTextPresentCheck" />
+
     <!-- 悬浮胶囊毛玻璃：截取 view_pager_main 底部画面做两跳降采样模糊，透出滚动内容 -->
     <io.legado.app.ui.widget.archive.ArchiveFrostedView
         android:id="@+id/bottom_frost"

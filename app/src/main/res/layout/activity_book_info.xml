@@ -64,22 +64,9 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
+                        android:paddingTop="8dp"
                         android:paddingLeft="20dp"
                         android:paddingRight="20dp">
-
-                        <TextView
-                            android:id="@+id/tv_archive_sub"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:fontFamily="monospace"
-                            android:gravity="center"
-                            android:includeFontPadding="false"
-                            android:letterSpacing="0.12"
-                            android:paddingTop="2dp"
-                            android:paddingBottom="10dp"
-                            android:textColor="@color/secondaryText"
-                            android:textSize="10sp"
-                            tools:text="WK-2085368447" />
 
                         <LinearLayout
                             android:layout_width="match_parent"

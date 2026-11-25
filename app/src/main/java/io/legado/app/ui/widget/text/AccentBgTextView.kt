@@ -18,6 +18,9 @@ class AccentBgTextView @JvmOverloads constructor(
 
     private var radius = 0
 
+    /** 描边模式：透明底 + 细描边，用于详情页这类不需要实心色块抢视线的地方。 */
+    private var outline = false
+
     init {
         val typedArray = context.obtainStyledAttributes(attrs, R.styleable.AccentBgTextView)
         radius = typedArray.getDimensionPixelOffset(R.styleable.AccentBgTextView_radius, radius)
@@ -30,11 +33,27 @@ class AccentBgTextView @JvmOverloads constructor(
         upBackground()
     }
 
+    fun setOutlineStyle(outline: Boolean) {
+        if (this.outline == outline) return
+        this.outline = outline
+        upBackground()
+    }
+
     private fun upBackground() {
         val accentColor = if (isInEditMode) {
             context.getCompatColor(R.color.accent)
         } else {
             ThemeStore.accentColor(context)
+        }
+        if (outline) {
+            background = Selector.shapeBuild()
+                .setCornerRadius(radius)
+                .setStrokeWidth(1.dpToPx())
+                .setDefaultBgColor(Color.TRANSPARENT)
+                .setDefaultStrokeColor(ColorUtils.withAlpha(accentColor, 0.42f))
+                .create()
+            setTextColor(ColorUtils.withAlpha(accentColor, 0.92f))
+            return
         }
         background = Selector.shapeBuild()
             .setCornerRadius(radius)

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 阅读菜单的悬浮工具条：给四个 FAB 一个统一底座，避免按钮直接浮在正文上互相干扰 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/background_menu" />
+    <corners android:radius="26dp" />
+    <stroke
+        android:width="0.7dp"
+        android:color="@color/divider" />
+</shape>

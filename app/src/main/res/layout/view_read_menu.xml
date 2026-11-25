@@ -34,6 +34,7 @@
                 android:layout_height="wrap_content"
                 android:paddingLeft="10dp"
                 android:paddingRight="10dp"
+                android:ellipsize="end"
                 android:gravity="center_vertical"
                 android:singleLine="true"
                 android:visibility="gone"
@@ -43,14 +44,18 @@
                 tools:visibility="visible"
                 tools:text="章节名" />
 
+            <!-- 章节地址很长，必须中间省略：以前没设 ellipsize，文字直接被右侧来源角标压掉 -->
             <TextView
                 android:id="@+id/tv_chapter_url"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:paddingLeft="10dp"
                 android:paddingRight="10dp"
+                android:alpha="0.7"
+                android:ellipsize="middle"
                 android:gravity="center_vertical"
                 android:singleLine="true"
+                android:textSize="11sp"
                 android:visibility="gone"
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintRight_toLeftOf="@+id/tv_custom_btn"
@@ -149,18 +154,25 @@
 
         <LinearLayout
             android:id="@+id/ll_floating_button"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/bg_read_fab_bar"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp">
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp">
 
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/fabSearch"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_margin="16dp"
+                android:layout_margin="4dp"
                 android:contentDescription="@string/search_content"
                 android:src="@drawable/ic_search"
                 android:tint="@color/primaryText"
@@ -171,16 +183,11 @@
                 app:pressedTranslationZ="2dp"
                 tools:ignore="UnusedAttribute" />
 
-            <Space
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1" />
-
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/fabAutoPage"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_margin="16dp"
+                android:layout_margin="4dp"
                 android:contentDescription="@string/auto_next_page"
                 android:src="@drawable/ic_auto_page"
                 android:tint="@color/primaryText"
@@ -191,16 +198,11 @@
                 app:pressedTranslationZ="2dp"
                 tools:ignore="UnusedAttribute" />
 
-            <Space
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1" />
-
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/fabReplaceRule"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_margin="16dp"
+                android:layout_margin="4dp"
                 android:contentDescription="@string/replace_rule_title"
                 android:src="@drawable/ic_find_replace"
                 android:tint="@color/primaryText"
@@ -211,16 +213,11 @@
                 app:pressedTranslationZ="2dp"
                 tools:ignore="UnusedAttribute" />
 
-            <Space
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1" />
-
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/fabNightTheme"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_margin="16dp"
+                android:layout_margin="4dp"
                 android:contentDescription="@string/dark_theme"
                 android:src="@drawable/ic_brightness"
                 android:tint="@color/primaryText"

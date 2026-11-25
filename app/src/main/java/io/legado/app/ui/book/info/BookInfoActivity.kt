@@ -1010,7 +1010,7 @@ class BookInfoActivity :
      */
     private fun upArchivePage(book: Book) {
         val code = ArchiveTokens.fileCode(book.bookUrl.hashCode().absoluteValue % 100000)
-        binding.tvArchiveSub.text = code
+        // 档案号只在书脊下方露一次，顶部那行已经删掉，避免同一个编号出现两遍
         binding.tvArchiveCode.text = code
         upArchiveStatus(book)
         binding.tvRead.text = if (book.totalChapterNum > 0) {
@@ -1097,6 +1097,8 @@ class BookInfoActivity :
     }
 
     private fun initViewEvent() = binding.run {
+        // 字数和类别用描边标签，实心黑块会把书名压下去
+        lbKind.outline = true
         tvIntroToggle.setOnClickListener {
             if (!introCanCollapse || !isIntroTextViewAttached) return@setOnClickListener
             introExpanded = !introExpanded

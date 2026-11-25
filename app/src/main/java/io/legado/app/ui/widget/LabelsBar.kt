@@ -19,6 +19,14 @@ class LabelsBar @JvmOverloads constructor(
     private val usedViews = arrayListOf<TextView>()
     var textSize = 12f
 
+    /** 描边模式：标签改成透明底描边，避免整排实心色块压过标题。 */
+    var outline = false
+        set(value) {
+            if (field == value) return
+            field = value
+            usedViews.forEach { (it as? AccentBgTextView)?.setOutlineStyle(value) }
+        }
+
     fun setLabels(
         labels: List<String>,
         onClick: ((String) -> Unit)? = null,
@@ -66,6 +74,7 @@ class LabelsBar @JvmOverloads constructor(
         }
         tv.textSize = textSize
         tv.text = label
+        (tv as? AccentBgTextView)?.setOutlineStyle(outline)
         tv.setOnClickListener(null)
         tv.setOnLongClickListener(null)
         tv.isClickable = false

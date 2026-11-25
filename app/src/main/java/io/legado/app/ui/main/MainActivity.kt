@@ -2,6 +2,7 @@
 
 package io.legado.app.ui.main
 
+import android.content.res.Configuration
 import android.graphics.Rect
 import android.graphics.drawable.StateListDrawable
 import android.os.Bundle
@@ -105,6 +106,8 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     private var bookshelfReselected: Long = 0
     private var exploreReselected: Long = 0
     private var pagePosition = 0
+    // 不能在字段初始化时读 resources：Activity 还没 attach，getResources() 会 NPE
+    private var lastOrientation = Configuration.ORIENTATION_UNDEFINED
     private val fragmentMap = hashMapOf<Int, Fragment>()
     private var bottomMenuCount = 4
     private val EXIT_INTERVAL = 2000L
@@ -124,6 +127,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     private var passphraseReadGeneration = 0
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
+        lastOrientation = resources.configuration.orientation
         upBottomMenu()
         initView()
         upHomePage()
@@ -265,6 +269,9 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         ArchivePagerEasing.apply(viewPagerMain)
         // 悬浮胶囊：圆角取高度一半，图标/文字用固定的黑白配色，不跟随主题主色
         bottomFrost.cornerRadius = 32f * resources.displayMetrics.density
+        // 胶囊底下已经有一层底部渐隐（nav_bottom_scrim）把滚动文字淡掉，
+        // 这里 0.55 只负责给胶囊一层纸感，太高会变成一块死板的白砖。
+        bottomFrost.tintAlpha = 0.55f
         bottomFrost.attachTo(viewPagerMain)
         this@MainActivity.applyPillNavStyle()
         bottomNavigationView.setOnNavigationItemSelectedListener(this@MainActivity)
@@ -453,6 +460,23 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         super.onSaveInstanceState(outState)
         if (AppConfig.autoRefreshBook) {
             outState.putBoolean("isAutoRefreshedBook", true)
+        }
+    }
+
+    /**
+     * 清单里声明了 orientation|screenSize，旋转时活动不会重建，
+     * layout-land 也就永远不会被加载——横屏后书架头会把列表挤没。
+     * 这里只在方向真的翻转时重建一次，让两套布局各自生效。
+     */
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (lastOrientation == Configuration.ORIENTATION_UNDEFINED) {
+            lastOrientation = newConfig.orientation
+            return
+        }
+        if (newConfig.orientation != lastOrientation) {
+            lastOrientation = newConfig.orientation
+            recreate()
         }
     }
 

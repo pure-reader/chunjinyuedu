@@ -36,6 +36,7 @@ import io.legado.app.ui.dict.rule.DictRuleActivity
 import io.legado.app.ui.file.FileManageActivity
 import io.legado.app.ui.main.MainFragmentInterface
 import io.legado.app.ui.replace.ReplaceRuleActivity
+import io.legado.app.ui.widget.archive.applyPillNavBottomInset
 import io.legado.app.utils.LogUtils
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.observeEventSticky
@@ -190,6 +191,9 @@ class MyFragment() : BaseFragment(R.layout.fragment_my_config), MainFragmentInte
 
         override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
             super.onViewCreated(view, savedInstanceState)
+            // 悬浮胶囊盖在列表上，最后几项（退出/更多）会被压住，
+            // 这里改成按胶囊几何预留，而不是只避让系统导航栏
+            listView.applyPillNavBottomInset()
             listView.setEdgeEffectColor(primaryColor)
         }
 

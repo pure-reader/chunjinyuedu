@@ -4,6 +4,7 @@ import android.content.Context
 import android.provider.Settings
 import androidx.recyclerview.widget.RecyclerView
 import io.legado.app.utils.navigationBarHeight
+import io.legado.app.utils.setOnApplyWindowInsetsListenerCompat
 import java.util.WeakHashMap
 
 /**
@@ -125,4 +126,10 @@ object PillNavInset {
 fun RecyclerView.applyPillNavBottomInset() {
     clipToPadding = false
     PillNavInset.applyTo(this)
+    // PreferenceFragment 之类的列表会自己挂一个「只避让系统栏」的监听，
+    // 这里必须接管：否则 inset 晚一步派发时会把预留改回 navHeight，胶囊又压回最后一项。
+    setOnApplyWindowInsetsListenerCompat { view, insets ->
+        PillNavInset.updateListReserve(view.context, insets.navigationBarHeight)
+        insets
+    }
 }

@@ -394,6 +394,7 @@ object ThemeConfig {
      * 更新主题
      */
     fun applyTheme(context: Context) = with(context) {
+        migrateLegacyPalette(this)
         when {
             AppConfig.isEInkMode -> {
                 ThemeStore.editTheme(this)
@@ -454,6 +455,37 @@ object ThemeConfig {
                     .transparentNavBar(transparentNavBar)
                     .apply()
             }
+        }
+    }
+
+    /**
+     * 老版本（以及从原版 Legado 恢复的备份）把「棕主色 + 红强调 + 灰底」写进了偏好。
+     * 档案风只改了代码里的默认值，没迁移这些存量值，所以主题缓存一重建，
+     * 工具栏就会退回棕色、标签指示器退回红色，和整站的浅纸配色打架。
+     *
+     * 只在四色完全等于原版默认、且用户没保存过命名主题时才迁移，
+     * 避免覆盖用户自己调过的配色。
+     */
+    private fun migrateLegacyPalette(context: Context) {
+        if (!context.getPrefString(PreferKey.dThemeName).isNullOrEmpty()) return
+        val legacyPrimary = 0xFF795548.toInt()   // md_brown_500
+        val legacyAccent = 0xFFE53935.toInt()    // md_red_600
+        val legacyBackground = 0xFFF5F5F5.toInt()// md_grey_100
+        val legacyBottomBg = 0xFFEEEEEE.toInt()  // md_grey_200
+        if (context.getPrefInt(PreferKey.cPrimary, 0) != legacyPrimary) return
+        if (context.getPrefInt(PreferKey.cAccent, 0) != legacyAccent) return
+        if (context.getPrefInt(PreferKey.cBackground, 0) != legacyBackground) return
+        if (context.getPrefInt(PreferKey.cBBackground, 0) != legacyBottomBg) return
+        context.putPrefInt(PreferKey.cPrimary, 0xFF3A3A36.toInt())
+        context.putPrefInt(PreferKey.cAccent, 0xFF607D71.toInt())
+        context.putPrefInt(PreferKey.cBackground, 0xFFF4F3EF.toInt())
+        context.putPrefInt(PreferKey.cBBackground, 0xFFEDECE6.toInt())
+        // 原版默认是不透明栏；档案风的浅色工具栏依赖透明栏，否则会被主色涂成深色
+        context.putPrefBoolean(PreferKey.tNavBar, true)
+        if (context.getPrefInt(PreferKey.cNPrimary, 0) == 0xFF546E7A.toInt()) {
+            context.putPrefInt(PreferKey.cNPrimary, 0xFFE8E6DF.toInt())
+            context.putPrefInt(PreferKey.cNAccent, 0xFF8FA79B.toInt())
+            context.putPrefBoolean(PreferKey.tNavBarN, true)
         }
     }
 

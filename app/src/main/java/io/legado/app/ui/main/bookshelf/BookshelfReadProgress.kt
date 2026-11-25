@@ -36,7 +36,12 @@ fun LinearProgressIndicator.updateBookshelfReadProgress(
     progress = progressPercent
     visible()
     percentView?.apply {
-        text = "$progressPercent%"
-        visible()
+        // 0% 时进度条本身是空的，再挂一个 "0%" 只是噪声，和右侧未读徽章抢注意力
+        if (progressPercent <= 0) {
+            gone()
+        } else {
+            text = "$progressPercent%"
+            visible()
+        }
     }
 }
