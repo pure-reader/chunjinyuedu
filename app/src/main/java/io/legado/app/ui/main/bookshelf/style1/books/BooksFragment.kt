@@ -321,7 +321,6 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
                 binding.refreshLayout.isEnabled = enableRefresh && itemCount > 0
                 binding.pickHeader.isGone = list.isEmpty()
                 binding.spineShelf.submit(list)
-                binding.tvPickCount.text = list.size.toString().padStart(3, '0')
                 if (list.isNotEmpty()) bindPickInfo(binding.spineShelf.selectedIndex)
                 booksAdapter.setItems(list)
                 delay(100)
