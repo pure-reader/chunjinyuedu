@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
+import io.legado.app.R
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.data.entities.Book
 import io.legado.app.databinding.ItemBookshelfListBinding
@@ -74,8 +75,16 @@ class BooksAdapterList(
         } else {
             binding.rlLoading.gone()
             if (AppConfig.showUnread) {
+                val unread = item.getUnreadChapterNum()
+                // 纯数字会和上方「共 xx 章」混淆（963 vs 964），带上单位再说清楚是什么
+                if (unread > 0) {
+                    binding.bvUnread.setBadgeText(
+                        context.getString(R.string.archive_unread_badge, unread)
+                    )
+                } else {
+                    binding.bvUnread.invisible()
+                }
                 binding.bvUnread.setHighlight(item.lastCheckCount > 0)
-                binding.bvUnread.setBadgeCount(item.getUnreadChapterNum())
             } else {
                 binding.bvUnread.invisible()
             }

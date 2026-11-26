@@ -411,6 +411,7 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
         if (visible) {
             upHistory(searchView.query.toString())
             binding.llInputHelp.visibility = VISIBLE
+            binding.llSearchEmpty.gone()
         } else {
             binding.llInputHelp.visibility = GONE
         }
@@ -460,6 +461,7 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
      * 开始搜索
      */
     private fun startSearch() {
+        binding.llSearchEmpty.gone()
         binding.refreshProgressBar.fontColor = accentColor
         binding.refreshProgressBar.visible()
         binding.tvSearchProgress.visible()
@@ -474,10 +476,29 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
         binding.refreshProgressBar.gone()
         binding.refreshProgressBar.setDurProgress(0)
         binding.tvSearchProgress.gone()
+        updateSearchEmpty()
         if (!isManualStopSearch && viewModel.hasMore) {
             binding.fbStartStop.setImageResource(R.drawable.ic_play_24dp)
         } else {
             binding.fbStartStop.invisible()
+        }
+    }
+
+    /**
+     * 全部分组搜完且确实没有结果时才显示空态。
+     * 搜索中途某些源先返回空、但后面还有源在跑，不能提前下结论。
+     */
+    private fun updateSearchEmpty() {
+        val show = !viewModel.hasMore
+                && searchView.query.isNotBlank()
+                && adapter.isEmpty()
+        if (show) {
+            binding.tvSearchEmpty.text = getString(
+                R.string.search_no_result, searchView.query.toString()
+            )
+            binding.llSearchEmpty.visible()
+        } else {
+            binding.llSearchEmpty.gone()
         }
     }
 
@@ -488,6 +509,7 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
             })
         }
         viewModel.searchFinishLiveData.observe(this) { isEmpty ->
+            updateSearchEmpty()
             if (!isEmpty || viewModel.searchScope.isAll()) return@observe
             alert("搜索结果为空") {
                 val precisionSearch = appCtx.getPrefBoolean(PreferKey.precisionSearch)

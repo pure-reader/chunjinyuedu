@@ -315,7 +315,7 @@
     <string name="import_select_book">导入选择书籍</string>
     <string name="threads_num_title">更新和搜索线程数（太多会卡顿）</string>
     <string name="change_icon">切换图标</string>
-    <string name="remove_from_bookshelf">删除书籍</string>
+    <string name="remove_from_bookshelf">移出书架</string>
     <string name="start_read">开始阅读</string>
     <string name="data_loading">加载数据中…</string>
     <string name="load_error_retry">加载失败，点击重试</string>
@@ -570,6 +570,9 @@
     <string name="archive_intro_fallback">已保存到本地书库，可离线阅读。</string>
     <string name="unknown_author">佚名</string>
     <string name="archive_chapter_count">共 %1$d 章</string>
+    <string name="archive_unread_badge">未读 %1$d</string>
+    <string name="search_no_result">没有找到与「%1$s」相关的书籍</string>
+    <string name="search_no_result_hint">换个关键词试试，或在「书源管理」中添加更多书源</string>
     <string name="bookshelf_all_books">全部书籍</string>
     <string name="archive_shelf_label">选书</string>
     <string name="page_anim_paper">档案</string>

@@ -114,4 +114,7 @@
     <color name="archive_badge_neutral">#E7E3D8</color>
     <color name="archive_cover_paper">#F1EEE3</color>
     <color name="archive_page_edge">#FFFFFF</color>
+    <!-- 档案编号贴条：跟随主题反转，避免深色下白底黑字 -->
+    <color name="archive_code_badge_bg">#1A1A17</color>
+    <color name="archive_code_badge_text">#F4F3EF</color>
 </resources>

@@ -121,6 +121,8 @@
                                         android:id="@+id/tv_author"
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
+                                        android:minHeight="48dp"
+                                        android:gravity="center_vertical"
                                         android:ellipsize="end"
                                         android:includeFontPadding="false"
                                         android:maxLength="14"
@@ -167,7 +169,7 @@
                                     android:paddingTop="3dp"
                                     android:paddingRight="7dp"
                                     android:paddingBottom="3dp"
-                                    android:textColor="@color/background"
+                                    android:textColor="@color/archive_code_badge_text"
                                     android:textSize="9sp"
                                     tools:text="WK-2085368447" />
 
@@ -323,7 +325,7 @@
                         <io.legado.app.ui.widget.text.AccentTextView
                             android:id="@+id/tv_intro_toggle"
                             android:layout_width="wrap_content"
-                            android:layout_height="36dp"
+                            android:layout_height="48dp"
                             android:layout_gravity="end"
                             android:background="?attr/selectableItemBackground"
                             android:clickable="true"
@@ -395,7 +397,8 @@
                             <TextView
                                 android:id="@+id/tv_toc_view"
                                 android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
+                                android:layout_height="48dp"
+                                android:gravity="center_vertical"
                                 android:background="?attr/selectableItemBackground"
                                 android:clickable="true"
                                 android:focusable="true"
@@ -524,7 +527,7 @@
                     <TextView
                         android:id="@+id/tv_shelf"
                         android:layout_width="wrap_content"
-                        android:layout_height="44dp"
+                        android:layout_height="48dp"
                         android:background="@drawable/bg_archive_pill_ghost"
                         android:gravity="center"
                         android:includeFontPadding="false"
@@ -538,7 +541,7 @@
                     <TextView
                         android:id="@+id/tv_read"
                         android:layout_width="0dp"
-                        android:layout_height="44dp"
+                        android:layout_height="48dp"
                         android:layout_weight="1"
                         android:layout_marginStart="4dp"
                         android:background="@drawable/bg_archive_pill"

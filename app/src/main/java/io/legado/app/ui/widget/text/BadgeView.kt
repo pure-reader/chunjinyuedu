@@ -150,6 +150,11 @@ class BadgeView @JvmOverloads constructor(
         text = if (count == 0) "" else count.toString()
     }
 
+    /** 带说明文字的徽章，如「未读 963」。纯数字徽章仍走 setBadgeCount。 */
+    fun setBadgeText(label: String) {
+        text = label
+    }
+
     fun setHighlight(highlight: Boolean) {
         if (highlight) {
             setBackgroundColor(context.accentColor)

@@ -2,6 +2,6 @@
 <!-- 档案编号徽章：墨底白字小方块（对应 Wenku8 封套上的 WK-xxxxx 贴条） -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="@color/primaryText" />
+    <solid android:color="@color/archive_code_badge_bg" />
     <corners android:radius="2dp" />
 </shape>

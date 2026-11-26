@@ -60,4 +60,6 @@
     <color name="archive_badge_neutral">#3A3A36</color>
     <color name="archive_cover_paper">#2E2E2A</color>
     <color name="archive_page_edge">#4A4A45</color>
+    <color name="archive_code_badge_bg">#3A3A36</color>
+    <color name="archive_code_badge_text">#E8E8E3</color>
 </resources>

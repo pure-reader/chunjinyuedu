@@ -35,6 +35,39 @@
             android:clipToPadding="false"
             tools:listitem="@layout/item_search" />
 
+        <!-- 全部分组都搜完仍无结果时给个交代，否则用户只看到一片空白 -->
+        <LinearLayout
+            android:id="@+id/ll_search_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="150dp"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:paddingHorizontal="32dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <TextView
+                android:id="@+id/tv_search_empty"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textColor="@color/primaryText"
+                android:textSize="15sp"
+                tools:text="没有找到相关书籍" />
+
+            <TextView
+                android:id="@+id/tv_search_empty_hint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:text="@string/search_no_result_hint"
+                android:textColor="@color/secondaryText"
+                android:textSize="12sp" />
+        </LinearLayout>
+
     </io.legado.app.ui.widget.dynamiclayout.DynamicFrameLayout>
 
     <TextView
