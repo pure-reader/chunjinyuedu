@@ -56,7 +56,7 @@
                     android:layout_height="match_parent"
                     android:clipToPadding="false"
                     android:fillViewport="true"
-                    android:paddingBottom="104dp"
+                    android:paddingBottom="100dp"
                     android:scrollbars="none">
 
                     <LinearLayout
@@ -468,10 +468,10 @@
                             android:orientation="vertical"
                             android:visibility="gone" />
 
-                        <!-- 给悬浮操作栏（60dp + 16dp 外边距）留出空间，否则目录最后一行会被按钮压住 -->
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="88dp" />
+                        <!--
+                          底部预留只留一处：scroll_view 的 paddingBottom（100dp ≈ 操作栏 60dp + 16dp 外边距 + 24dp 呼吸）。
+                          这里原本还有一块 88dp 占位，两处叠加等于滚到底空出 116dp，往下大片空白。
+                        -->
 
                     </LinearLayout>
 
@@ -485,10 +485,15 @@
                 android:layout_height="2dp"
                 android:layout_gravity="top" />
 
-            <!-- 底部渐隐遮罩：让滚动内容在操作栏前淡出，文字不会从半透明按钮后透出来 -->
+            <!--
+              底部渐隐遮罩：让滚动内容在操作栏前淡出，文字不会从半透明按钮后透出来。
+              高度收到 106dp（原来 150dp）：再高会把 100dp 处的「查看全部」页脚一起蒙掉，
+              看起来像 disabled；剩下的遮盖缺口由操作栏自身 tint 补。
+            -->
             <View
+                android:id="@+id/vw_bottom_scrim"
                 android:layout_width="match_parent"
-                android:layout_height="150dp"
+                android:layout_height="106dp"
                 android:layout_gravity="bottom"
                 android:background="@drawable/bg_archive_bottom_scrim"
                 android:clickable="false"

@@ -3,6 +3,7 @@ package io.legado.app.ui.book.info
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -269,11 +270,22 @@ class BookInfoActivity :
         binding.llInfo.setBackgroundColor(backgroundColor)
         binding.ivCoverC.setCardBackgroundColor(backgroundColor)
         binding.flAction.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+        // 渐隐的终止色必须等于页面实色：drawable 里写的是 @color/background（深色 #191919），
+        // 而页面实色来自 ThemeStore（深色 #212121），直接用在底部会压出一条深色横带。
+        binding.vwBottomScrim.background = GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(
+                android.graphics.Color.TRANSPARENT,
+                backgroundColor,
+                backgroundColor
+            )
+        )
         binding.vwBg.applyNavigationBarPadding()
         binding.flActionFrost.attachTo(binding.scrollView)
-        // 详情页底部压着静止的章节目录，主导航用的 0.30 tint 太透会文字重叠，
-        // 这里调高纸色遮盖让"删除书籍"区域压住底下字形，保留毛玻璃的模糊色块质感。
-        binding.flActionFrost.tintAlpha = 0.60f
+        // 详情页底部压着静止的章节目录，主导航用的 0.30 tint 太透会文字重叠；
+        // 底部渐隐从 150dp 压到 106dp 后，按钮上方仍有章节文字透出，
+        // tint 提到 0.97 由按钮自己补上遮盖：纸色几乎压满，只留一点点通透。
+        binding.flActionFrost.tintAlpha = 0.97f
         binding.flActionFrost.blurDivisor = 10
         binding.flActionFrost.showEdge = false
         binding.tvShelf.setTextColor(getPrimaryTextColor(ColorUtils.isColorLight(bottomBackground)))
