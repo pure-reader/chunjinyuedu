@@ -7,7 +7,7 @@ import io.legado.app.data.entities.BookChapter
 import io.legado.app.databinding.ItemBookInfoTocBinding
 
 /**
- * 详情页目录预览：只列前若干章，等宽序号 + 章节名，点行进入阅读。
+ * 详情页目录预览：只列前 TOC_PREVIEW_COUNT 章，等宽序号 + 章节名，点行进入阅读。
  * 完整目录仍由 tv_toc_view 跳转 TocActivity。
  */
 class BookInfoTocAdapter(

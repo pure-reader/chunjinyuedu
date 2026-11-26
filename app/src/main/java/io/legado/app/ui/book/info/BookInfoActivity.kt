@@ -1067,10 +1067,23 @@ class BookInfoActivity :
         lifecycleScope.launch {
             val chapters = withContext(Dispatchers.IO) {
                 runCatching { appDb.bookChapterDao.getChapterList(book.bookUrl) }.getOrNull()
-            }
-            tocAdapter?.submit(chapters.orEmpty().take(30))
+            }.orEmpty()
+            tocAdapter?.submit(chapters.take(TOC_PREVIEW_COUNT))
+            upTocPreviewFooter(chapters.size)
             binding.flActionFrost.post { binding.flActionFrost.scheduleRefresh() }
         }
+    }
+
+    /**
+     * 目录只渲染前 [TOC_PREVIEW_COUNT] 章，必须显式告诉用户"后面还有"。
+     * 否则页头写"共 964 章"、列表断在第 12 章且下方留白，读起来就是加载失败。
+     */
+    private fun upTocPreviewFooter(loadedCount: Int) {
+        val hasMore = loadedCount > TOC_PREVIEW_COUNT
+        binding.llTocMore.visible(hasMore)
+        if (!hasMore) return
+        binding.tvTocMoreHint.text =
+            getString(R.string.toc_preview_hint, TOC_PREVIEW_COUNT, loadedCount)
     }
 
     private fun upTvBookshelf() {
@@ -1161,26 +1174,8 @@ class BookInfoActivity :
                 showDialogFragment(ChangeBookSourceDialog(book.name, book.author))
             }
         }
-        tvTocView.setOnClickListener {
-            if (viewModel.chapterListData.value.isNullOrEmpty()) {
-                toastOnUi(R.string.chapter_list_empty)
-                return@setOnClickListener
-            }
-            val book = viewModel.getBook(false)
-            if (book == null) {
-                toastOnUi(R.string.book_not_exist)
-                return@setOnClickListener
-            }
-            if (!viewModel.inBookshelf) {
-                viewModel.saveBook(book) { //点击目录会保存book
-                    viewModel.saveChapterList {
-                        openChapterList()
-                    }
-                }
-            } else {
-                openChapterList()
-            }
-        }
+        tvTocView.setOnClickListener { openFullToc() }
+        llTocMore.setOnClickListener { openFullToc() }
         tvChangeGroup.setOnClickListener {
             viewModel.getBook()?.let {
                 showDialogFragment(
@@ -1389,6 +1384,31 @@ class BookInfoActivity :
         viewModel.delBook(deleteOriginal) {
             setResult(RESULT_OK)
             finish()
+        }
+    }
+
+    /**
+     * 目录预览的两个出口（页头"查看目录"和列表末尾"查看全部"）共用的入口：
+     * 不在书架里的书，先落库再进完整目录，否则 TocActivity 拿不到章节。
+     */
+    private fun openFullToc() {
+        if (viewModel.chapterListData.value.isNullOrEmpty()) {
+            toastOnUi(R.string.chapter_list_empty)
+            return
+        }
+        val book = viewModel.getBook(false)
+        if (book == null) {
+            toastOnUi(R.string.book_not_exist)
+            return
+        }
+        if (!viewModel.inBookshelf) {
+            viewModel.saveBook(book) { //点击目录会保存book
+                viewModel.saveChapterList {
+                    openChapterList()
+                }
+            }
+        } else {
+            openChapterList()
         }
     }
 
@@ -1688,6 +1708,9 @@ class BookInfoActivity :
     }
 
 }
+
+/** 详情页目录预览长度：超过这个数就在末尾提示"还有多少章"，完整目录进 TocActivity */
+private const val TOC_PREVIEW_COUNT = 12
 
 internal fun resolveBookInfoTocTitle(
     storedTitle: String?,
