@@ -18,6 +18,7 @@ import android.view.MotionEvent
 import android.view.VelocityTracker
 import android.view.View
 import android.view.ViewConfiguration
+import android.view.ViewGroup
 import android.widget.OverScroller
 import androidx.core.content.ContextCompat
 import com.bumptech.glide.Glide
@@ -161,9 +162,13 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
     private var velocityTracker: VelocityTracker? = null
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private var downX = 0f
+    private var downY = 0f
     private var downOffset = 0f
     private var dragging = false
+    private var verticalGesture = false
     private var settling = false
+    /** 吸附落定后是否回调 onSettle（列表滚动驱动的跟随不需要再回写列表） */
+    private var notifySettle = true
 
     private val coverRect = RectF()
     private val spineRect = RectF()
@@ -243,9 +248,10 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
     }
 
     /** 由外部（下方列表滚动）同步选中项 */
-    fun setSelected(index: Int, animate: Boolean = true) {
+    fun setSelected(index: Int, animate: Boolean = true, notifySettle: Boolean = true) {
         if (books.isEmpty()) return
         val target = index.coerceIn(0, books.size - 1)
+        this.notifySettle = notifySettle
         if (target == selected && abs(offset - target) < 0.01f) return
         selected = target
         if (animate) {
@@ -589,16 +595,33 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
 
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                parent?.requestDisallowInterceptTouchEvent(true)
                 downX = event.x
+                downY = event.y
                 downOffset = offset
                 dragging = false
+                verticalGesture = false
+                // 按下时不抢手势：竖向拖动要留给父级列表滚动。
+                // 以前在 DOWN 里就 requestDisallowInterceptTouchEvent(true)，
+                // 从书脊区起手的竖直滑动会被这里整段吃掉，列表一动不动。
+                parent?.requestDisallowInterceptTouchEvent(false)
                 scroller.forceFinished(true)
             }
 
             MotionEvent.ACTION_MOVE -> {
                 val dx = event.x - downX
-                if (!dragging && abs(dx) > touchSlop) dragging = true
+                val dy = event.y - downY
+                if (!dragging && !verticalGesture) {
+                    if (abs(dy) > touchSlop && abs(dy) >= abs(dx)) {
+                        // 判定为竖向滑动，本次手势不再处理，等父级接管
+                        verticalGesture = true
+                        (parent as? ViewGroup)?.requestDisallowInterceptTouchEvent(false)
+                        scroller.forceFinished(true)
+                    } else if (abs(dx) > touchSlop) {
+                        dragging = true
+                        parent?.requestDisallowInterceptTouchEvent(true)
+                    }
+                }
+                if (verticalGesture) return true
                 if (dragging) {
                     offset = (downOffset - dx / pitch).coerceIn(-0.35f, (books.size - 1 + 0.35f))
                     val nearest = offset.roundToInt().coerceIn(0, books.size - 1)
@@ -618,6 +641,13 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
                 velocityTracker?.recycle()
                 velocityTracker = null
 
+                if (verticalGesture) {
+                    verticalGesture = false
+                    dragging = false
+                    return true
+                }
+                // 用户手势驱动的吸附：落定后要回调，让列表跟到同一本
+                notifySettle = true
                 if (!dragging) {
                     handleTap(event.x, event.y)
                 } else if (scroller.isFinished) {
@@ -681,7 +711,7 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
         settling = false
         offset = selected.toFloat()
         invalidate()
-        onSettle?.invoke(selected)
+        if (notifySettle) onSettle?.invoke(selected)
     }
 
     override fun computeScroll() {

@@ -1,12 +1,10 @@
 package io.legado.app.ui.main.bookshelf.style1.books
 
 import android.annotation.SuppressLint
-import android.content.res.Configuration
 import android.graphics.Rect
 import android.os.Bundle
 import android.view.View
 import android.view.ViewConfiguration
-import androidx.core.view.doOnLayout
 import androidx.core.view.isGone
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
@@ -96,11 +94,6 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
     private var itemCount = 0
     private var totalRows = 0
 
-    // 顶部书架随列表滚动的收起量（px）：0 = 完全展开
-    private var headerOffset = 0f
-    private var headerMaxOffset = 0f
-    private var pickInfoHeight = 0
-
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         arguments?.let {
             position = it.getInt("position", 0)
@@ -112,7 +105,6 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
         }
         initRecyclerView()
         initSpineShelf()
-        initHeaderCollapse()
         upRecyclerData()
     }
 
@@ -125,10 +117,16 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
         // 拖动过程中只更新书名/页码，等吸附落定再滚动下方列表，避免列表抖动
         spineShelf.onSelect = { index -> bindPickInfo(index) }
         spineShelf.onSettle = { index ->
-            syncingFromPick = true
             bindPickInfo(index)
-            rvBookshelf.smoothScrollToPosition(index)
-            rvBookshelf.postDelayed({ syncingFromPick = false }, 400L)
+            val lm = rvBookshelf.layoutManager as? LinearLayoutManager
+            val first = lm?.findFirstVisibleItemPosition() ?: RecyclerView.NO_POSITION
+            // 列表本来就在这一本上（滚动列表反向同步书脊）时不要再滚一次，
+            // 否则手指刚抬起列表又自己补一段动画，看起来就是卡一下
+            if (first != index) {
+                syncingFromPick = true
+                rvBookshelf.smoothScrollToPosition(index)
+                rvBookshelf.postDelayed({ syncingFromPick = false }, 400L)
+            }
         }
         spineShelf.onOpen = { open(it) }
         ivPickOpen.setOnClickListener {
@@ -143,7 +141,8 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
                 val first = lm.findFirstVisibleItemPosition()
                 if (first == RecyclerView.NO_POSITION || first == spineShelf.selectedIndex) return
                 syncingFromPick = true
-                spineShelf.setSelected(first, true)
+                // 由列表滚动驱动的书脊跟随：只重绘，不要再回头滚列表
+                spineShelf.setSelected(first, true, notifySettle = false)
                 bindPickInfo(first)
                 rvBookshelf.postDelayed({ syncingFromPick = false }, 400L)
             }
@@ -151,62 +150,21 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
     }
 
     /**
-     * 顶部书架随列表滚动收起。
-     *
-     * 收起的量和列表滚动量严格相等（不做缓动动画）：列表往上滚 dy，头部同时矮 dy，
-     * 可视内容在屏幕上的位置才不会被顶得跳一下。先收书名/页码那一块，再压书脊高度。
+     * 列表位置恢复（旋转重建、从后台回来）之后，书脊要跟到当前可见的第一本，
+     * 否则会出现"书脊停在第一本、列表停在两百本"的错位。
      */
-    private fun initHeaderCollapse() {
-        if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) return
-        if (binding.spineContainer == null || binding.pickInfo == null) return
-        binding.rvBookshelf.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-            override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
-                if (dy == 0) return
-                if (headerMaxOffset <= 0f) upHeaderMetrics()
-                if (headerMaxOffset <= 0f) return
-                val next = (headerOffset + dy).coerceIn(0f, headerMaxOffset)
-                if (next == headerOffset) return
-                headerOffset = next
-                applyHeaderOffset()
-            }
-        })
-    }
-
-    /** 信息块高度要等它量完才有，书单为空时第一次量到的是 0，所以每次滚动时补算 */
-    private fun upHeaderMetrics() {
-        val info = binding.pickInfo ?: return
-        if (info.height <= 0) return
-        pickInfoHeight = info.height
-        val density = resources.displayMetrics.density
-        headerMaxOffset = (90 * density) + pickInfoHeight
-    }
-
-    private fun applyHeaderOffset() {
-        val container = binding.spineContainer ?: return
-        val info = binding.pickInfo ?: return
-        val density = resources.displayMetrics.density
-        val shelfExpanded = 210f * density
-        val shelfMin = 120f * density
-        val infoTarget = (pickInfoHeight - headerOffset).coerceAtLeast(0f)
-        val shelfTarget = (shelfExpanded - (headerOffset - pickInfoHeight).coerceAtLeast(0f))
-            .coerceAtLeast(shelfMin)
-        val infoLp = info.layoutParams
-        if (infoLp.height != infoTarget.toInt()) {
-            infoLp.height = infoTarget.toInt()
-            info.alpha = if (pickInfoHeight > 0) infoTarget / pickInfoHeight else 0f
-            info.layoutParams = infoLp
-        }
-        val containerLp = container.layoutParams
-        if (containerLp.height != shelfTarget.toInt()) {
-            containerLp.height = shelfTarget.toInt()
-            container.layoutParams = containerLp
-        }
+    private fun syncPickToFirstVisible() {
+        val lm = binding.rvBookshelf.layoutManager as? LinearLayoutManager ?: return
+        val first = lm.findFirstVisibleItemPosition()
+        if (first == RecyclerView.NO_POSITION || first == binding.spineShelf.selectedIndex) return
+        binding.spineShelf.setSelected(first, false, notifySettle = false)
+        bindPickInfo(first)
     }
 
     private fun stepPick(step: Int) {
         val target = (binding.spineShelf.selectedIndex + step)
             .coerceIn(0, (binding.spineShelf.bookCount - 1).coerceAtLeast(0))
-        binding.spineShelf.setSelected(target, true)
+        binding.spineShelf.setSelected(target, true, notifySettle = false)
         syncingFromPick = true
         bindPickInfo(target)
         binding.rvBookshelf.smoothScrollToPosition(target)
@@ -382,6 +340,10 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
                 binding.spineShelf.submit(list)
                 if (list.isNotEmpty()) bindPickInfo(binding.spineShelf.selectedIndex)
                 booksAdapter.setItems(list)
+                // 数据回来后列表可能刚恢复到上次的位置，补一次对齐
+                val rv = binding.rvBookshelf
+                rv.post { if (rv.isAttachedToWindow) syncPickToFirstVisible() }
+                rv.postDelayed({ if (rv.isAttachedToWindow) syncPickToFirstVisible() }, 250L)
                 delay(100)
             }
         }
@@ -395,7 +357,14 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
         upLastUpdateTimeJob = viewLifecycleOwner.lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 while (isActive) {
-                    booksAdapter.upLastUpdateTime()
+                    val lm = binding.rvBookshelf.layoutManager as? LinearLayoutManager
+                    val first = lm?.findFirstVisibleItemPosition() ?: RecyclerView.NO_POSITION
+                    val last = lm?.findLastVisibleItemPosition() ?: RecyclerView.NO_POSITION
+                    if (first == RecyclerView.NO_POSITION || last == RecyclerView.NO_POSITION) {
+                        booksAdapter.upLastUpdateTime()
+                    } else {
+                        booksAdapter.upLastUpdateTime(first, last)
+                    }
                     delay(30 * 1000)
                 }
             }

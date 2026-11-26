@@ -6,8 +6,10 @@
   原有 id（refresh_layout / rv_bookshelf / tv_empty_msg）保持不变。
   下方列表 / 网格仍由原 RecyclerView 承担，与书脊书架双向联动。
 
-  收起动画：spine_container 高度 210dp→120dp、pick_info 高度→0 同时动画，
-  列表下滑时把顶部让出来，上滑或回到顶部再展开（见 BooksFragment.applyHeaderCollapse）。
+  头部固定高度，不随滚动变形：以前按滚动量压缩 pick_info / spine_container 的高度，
+  每帧改 layoutParams 会让整棵树重新布局，而且压缩量和列表滚动量叠加，首屏内容
+  会以两倍速度窜；压缩后 pickInfoHeight 记的是"已收起高度"，再也回不到完整高度，
+  页码行和"全部书籍"就被永久裁掉。列表已经明显是全部书籍，标题冗余，直接去掉。
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:apps="http://schemas.android.com/apk/res-auto"
@@ -141,18 +143,6 @@
                     apps:tint="@color/secondaryText" />
 
             </LinearLayout>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingLeft="20dp"
-                android:paddingTop="12dp"
-                android:paddingRight="20dp"
-                android:paddingBottom="6dp"
-                android:text="@string/bookshelf_all_books"
-                android:textColor="@color/primaryText"
-                android:textSize="17sp"
-                android:textStyle="bold" />
 
         </LinearLayout>
 

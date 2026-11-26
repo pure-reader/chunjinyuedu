@@ -86,8 +86,15 @@ abstract class BaseBooksAdapter<VB : ViewBinding>(context: Context) :
         }
     }
 
-    fun upLastUpdateTime() {
-        notifyItemRangeChanged(0, itemCount, Bundle().apply {
+    fun upLastUpdateTime() = upLastUpdateTime(0, itemCount - 1)
+
+    /** 只刷可见区间，避免每 30 秒对整张书单做一次全量 notify */
+    fun upLastUpdateTime(from: Int, to: Int) {
+        if (itemCount <= 0) return
+        val last = itemCount - 1
+        val start = from.coerceIn(0, last)
+        val end = to.coerceIn(start, last)
+        notifyItemRangeChanged(start, end - start + 1, Bundle().apply {
             putString("lastUpdateTime", null)
         })
     }
