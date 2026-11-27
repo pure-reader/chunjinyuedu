@@ -78,7 +78,7 @@
                 app:layout_constraintEnd_toEndOf="@+id/iv_cover"
                 app:layout_constraintStart_toStartOf="@+id/iv_cover"
                 app:trackColor="@color/transparent20"
-                app:trackThickness="2dp"
+                app:trackThickness="1.5dp"
                 tools:ignore="UnusedAttribute"
                 tools:progress="60"
                 tools:visibility="visible" />

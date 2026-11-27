@@ -1159,17 +1159,20 @@ object ReadBookConfig {
         }
 
         fun setCurPageAnim(@PageAnim.Anim anim: Int) {
+            // 仿真翻页统一迁到流动，避免进入阅读页时出现仿真效果
+            val target = if (anim == PageAnim.simulationPageAnim) PageAnim.relayPageAnim else anim
             when {
-                AppConfig.isEInkMode -> pageAnimEInk = anim
-                else -> pageAnim = anim
+                AppConfig.isEInkMode -> pageAnimEInk = target
+                else -> pageAnim = target
             }
         }
 
         fun curPageAnim(): Int {
-            return when {
+            val anim = when {
                 AppConfig.isEInkMode -> pageAnimEInk
                 else -> pageAnim
             }
+            return if (anim == PageAnim.simulationPageAnim) PageAnim.relayPageAnim else anim
         }
 
         fun setCurBg(bgType: Int, bg: String) {

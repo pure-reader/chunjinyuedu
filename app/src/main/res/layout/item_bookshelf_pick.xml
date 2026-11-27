@@ -39,7 +39,7 @@
                 android:visibility="gone"
                 app:indicatorColor="@color/accent"
                 app:trackColor="@color/transparent20"
-                app:trackThickness="2dp"
+                app:trackThickness="1.5dp"
                 tools:progress="60"
                 tools:visibility="visible" />
 

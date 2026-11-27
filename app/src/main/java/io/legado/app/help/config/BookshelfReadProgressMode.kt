@@ -4,8 +4,8 @@ object BookshelfReadProgressMode {
     const val HIDDEN = 0
     const val STANDARD = 1
     const val ENHANCED = 2
-    const val STANDARD_THICKNESS_DP = 2
-    const val ENHANCED_THICKNESS_DP = 4
+    const val STANDARD_THICKNESS_DP = 1
+    const val ENHANCED_THICKNESS_DP = 2
 
     fun normalize(value: Int): Int = value.coerceIn(HIDDEN, ENHANCED)
 

@@ -651,7 +651,7 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
                 if (!dragging) {
                     handleTap(event.x, event.y)
                 } else if (scroller.isFinished) {
-                    if (abs(vx) > dp(320f)) {
+                    if (abs(vx) > dp(560f)) {
                         val step = if (vx < 0) 1 else -1
                         val target = (offset.roundToInt() + step).coerceIn(0, books.size - 1)
                         startScrollTo(target)
@@ -700,10 +700,10 @@ class ArchiveSpineShelfView @JvmOverloads constructor(
             return
         }
         settling = true
-        scroller.startScroll(start, 0, end - start, 0, 320)
+        scroller.startScroll(start, 0, end - start, 0, 560)
         postInvalidateOnAnimation()
         // 兜底：若最后一次绘制没触发 computeScroll，也要把吸附结果交出去
-        postDelayed({ finishSettle() }, 420L)
+        postDelayed({ finishSettle() }, 660L)
     }
 
     private fun finishSettle() {
