@@ -283,10 +283,10 @@ class BookInfoActivity :
         binding.vwBg.applyNavigationBarPadding()
         binding.flActionFrost.attachTo(binding.scrollView)
         // 详情页底部压着静止的章节目录，主导航用的 0.30 tint 太透会文字重叠；
-        // 底部渐隐从 150dp 压到 106dp 后，按钮上方仍有章节文字透出，
-        // tint 提到 0.97 由按钮自己补上遮盖：纸色几乎压满，只留一点点通透。
-        binding.flActionFrost.tintAlpha = 0.97f
-        binding.flActionFrost.blurDivisor = 10
+        // tint 0.84 让目录色块透出来，blur 提到 12 把字形彻底糊成色块，
+        // 按钮上的文字仍然清晰，玻璃感比 0.97 明显。
+        binding.flActionFrost.tintAlpha = 0.84f
+        binding.flActionFrost.blurDivisor = 12
         binding.flActionFrost.showEdge = false
         binding.tvShelf.setTextColor(getPrimaryTextColor(ColorUtils.isColorLight(bottomBackground)))
         binding.tvToc.text = getString(R.string.toc_s, getString(R.string.loading))

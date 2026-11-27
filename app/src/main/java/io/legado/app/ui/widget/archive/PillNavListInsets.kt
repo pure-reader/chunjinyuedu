@@ -23,8 +23,8 @@ import java.util.WeakHashMap
  */
 object PillNavInset {
 
-    /** 胶囊高度，与 activity_main.xml 中的 80dp 保持一致。 */
-    const val PILL_HEIGHT_DP = 80f
+    /** 胶囊高度，与 activity_main.xml 中的 72dp 保持一致。 */
+    const val PILL_HEIGHT_DP = 72f
 
     private const val GAP_KEY_DP = 16f
     private const val GAP_GESTURE_DP = 8f
