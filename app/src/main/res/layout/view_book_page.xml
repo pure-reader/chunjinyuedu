@@ -78,18 +78,6 @@
         app:layout_constraintBottom_toTopOf="@id/vw_bottom_divider"
         app:layout_constraintTop_toBottomOf="@id/vw_top_divider" />
 
-    <!-- 档案页边标记：只画左右装订线与四角角标，落在正文留白内。
-         声明在 content_text_view 之后即绘制于其上层，但自身不可点击、
-         不消费触摸事件，翻页与选字不受影响。 -->
-    <io.legado.app.ui.widget.archive.ArchivePageOverlayView
-        android:id="@+id/vw_archive_frame"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        app:layout_constraintBottom_toBottomOf="@id/content_text_view"
-        app:layout_constraintEnd_toEndOf="@id/content_text_view"
-        app:layout_constraintStart_toStartOf="@id/content_text_view"
-        app:layout_constraintTop_toTopOf="@id/content_text_view" />
-
     <View
         android:id="@+id/vw_bottom_divider"
         android:layout_width="match_parent"
