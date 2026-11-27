@@ -126,6 +126,30 @@ data class BookChapter(
         return bookUrl + url
     }
 
+    companion object {
+        /** 书源标题常见的 "1.第1章 xxx" 前缀，只在展示时剥掉，不修改库里的 title */
+        private val indexPrefixRegex = Regex("""^\s*(\d{1,4})\s*[.．]\s*""")
+    }
+
+    /**
+     * 剥离书源标题里与章节序号重复的数字前缀。
+     *
+     * 部分书源把标题写成 "1.第1章 明道宫"，而目录本身已有序号列，
+     * 再显示一遍就成了三重编号。这里只剥离数字恰好等于 index+1 的前缀，
+     * 避免误伤 "2024.年度总结" 这类真实标题；原始 title 保持不变，
+     * 正文去重、替换规则、导出仍用原文。
+     */
+    fun stripIndexPrefix(displayTitle: String): String {
+        val match = indexPrefixRegex.find(displayTitle) ?: return displayTitle
+        val num = match.groupValues[1].toIntOrNull() ?: return displayTitle
+        if (num != index + 1) return displayTitle
+        return displayTitle.substring(match.range.last + 1)
+            .takeIf { it.isNotBlank() } ?: displayTitle
+    }
+
+    /** 供目录等纯展示场景使用：标题原文去掉冗余序号前缀 */
+    fun displayTitleNoIndex(): String = stripIndexPrefix(title)
+
     fun getDisplayTitle(
         replaceRules: List<ReplaceRule>? = null,
         useReplace: Boolean = true,

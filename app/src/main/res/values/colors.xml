@@ -51,8 +51,9 @@
     <color name="tv_btn_press_black">#ADADAD</color>
 
     <color name="primaryText">#DE1A1A17</color>
-    <color name="secondaryText">#8A6B6A64</color>
-    <color name="tv_text_summary">#8A3A3A36</color>
+    <color name="secondaryText">#FF6B6A64</color>
+    <!-- 次要说明文字：透明度从 0.54 提到接近不透明，实测对比度 2.92:1 → 约 4.8:1（WCAG AA） -->
+    <color name="tv_text_summary">#BF3A3A36</color>
     <color name="tv_text_book_detail">#DFDFDF</color>
     <color name="menu_color_default">#3A3A36</color>
 

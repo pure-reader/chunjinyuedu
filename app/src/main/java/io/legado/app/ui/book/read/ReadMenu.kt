@@ -2,7 +2,6 @@ package io.legado.app.ui.book.read
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.res.ColorStateList
 import android.database.ContentObserver
 import android.graphics.PorterDuff
 import android.graphics.drawable.GradientDrawable
@@ -105,10 +104,6 @@ class ReadMenu @JvmOverloads constructor(
         context.getPrimaryTextColor(ColorUtils.isColorLight(bgColor))
     }
 
-    private var bottomBackgroundList: ColorStateList = Selector.colorBuild()
-        .setDefaultColor(bgColor)
-        .setPressedColor(ColorUtils.darkenColor(bgColor))
-        .create()
     private var onMenuOutEnd: (() -> Unit)? = null
     private val showBrightnessView
         get() = context.getPrefBoolean(
@@ -199,13 +194,10 @@ class ReadMenu @JvmOverloads constructor(
         } else {
             llBottomBg.setBackgroundColor(bgColor)
         }
-        fabSearch.backgroundTintList = bottomBackgroundList
+        // 快捷操作已并入底部工具条：只给图标着色，不再给 FAB 上圆形底色
         fabSearch.setColorFilter(textColor)
-        fabAutoPage.backgroundTintList = bottomBackgroundList
         fabAutoPage.setColorFilter(textColor)
-        fabReplaceRule.backgroundTintList = bottomBackgroundList
         fabReplaceRule.setColorFilter(textColor)
-        fabNightTheme.backgroundTintList = bottomBackgroundList
         fabNightTheme.setColorFilter(textColor)
         val chapterTextColor = Selector.colorBuild()
             .setDefaultColor(textColor)
@@ -266,10 +258,6 @@ class ReadMenu @JvmOverloads constructor(
         } else {
             context.getPrimaryTextColor(ColorUtils.isColorLight(bgColor))
         }
-        bottomBackgroundList = Selector.colorBuild()
-            .setDefaultColor(bgColor)
-            .setPressedColor(ColorUtils.darkenColor(bgColor))
-            .create()
     }
 
     fun upBrightnessState() {

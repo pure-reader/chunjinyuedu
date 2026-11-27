@@ -31,7 +31,8 @@ class BookInfoTocAdapter(
         val chapter = items[position]
         holder.binding.run {
             tvTocIndex.text = (position + 1).toString().padStart(2, '0')
-            tvTocTitle.text = chapter.title
+            // 书源标题自带 "1.第1章" 时，序号列再显示 01 就是三重编号
+            tvTocTitle.text = chapter.displayTitleNoIndex()
             root.setOnClickListener { onClick(chapter) }
         }
     }

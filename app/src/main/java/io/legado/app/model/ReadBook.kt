@@ -270,10 +270,12 @@ object ReadBook : CoroutineScope by MainScope() {
     internal fun processChapterContent(book: Book, chapter: BookChapter, content: String) =
         ContentProcessor.get(book).let { processor ->
             val manualRules = manualReplaceRules(book)
-            val title = chapter.getDisplayTitle(
-                manualRules?.title ?: processor.getTitleReplaceRules(),
-                manualRules?.enabled ?: book.getUseReplaceRule(),
-                replaceBook = book.toReplaceBook(),
+            val title = chapter.stripIndexPrefix(
+                chapter.getDisplayTitle(
+                    manualRules?.title ?: processor.getTitleReplaceRules(),
+                    manualRules?.enabled ?: book.getUseReplaceRule(),
+                    replaceBook = book.toReplaceBook(),
+                )
             )
             title to processor.getContent(
                 book, chapter, content, includeTitle = false,

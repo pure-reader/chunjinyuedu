@@ -176,7 +176,9 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
     }
 
     private fun getDisplayTitle(item: TocListItem): String {
-        return displayTitleMap[item.key] ?: item.chapter.title
+        val title = displayTitleMap[item.key] ?: item.chapter.title
+        // 序号已由界面元素承担时，剥掉书源标题里重复的 "1.第1章" 前缀
+        return item.chapter.stripIndexPrefix(title)
     }
 
     override fun getViewBinding(parent: ViewGroup): ItemChapterListBinding {
