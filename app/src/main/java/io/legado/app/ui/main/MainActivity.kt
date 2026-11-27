@@ -271,7 +271,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         bottomFrost.cornerRadius = 32f * resources.displayMetrics.density
         // 胶囊底下已经有一层底部渐隐（nav_bottom_scrim）把滚动文字淡掉，
         // 这里 0.55 只负责给胶囊一层纸感，太高会变成一块死板的白砖。
-        bottomFrost.tintAlpha = 0.55f
+        bottomFrost.tintAlpha = 0.92f
         bottomFrost.attachTo(viewPagerMain)
         this@MainActivity.applyPillNavStyle()
         bottomNavigationView.setOnNavigationItemSelectedListener(this@MainActivity)

@@ -571,6 +571,7 @@
     <string name="unknown_author">佚名</string>
     <string name="archive_chapter_count">共 %1$d 章</string>
     <string name="archive_unread_badge">未读 %1$d</string>
+    <string name="archive_unread_badge_new">新 · 未读 %1$d</string>
     <string name="search_no_result">没有找到与「%1$s」相关的书籍</string>
     <string name="search_no_result_hint">换个关键词试试，或在「书源管理」中添加更多书源</string>
     <string name="bookshelf_all_books">全部书籍</string>
@@ -1062,8 +1063,8 @@
     <string name="search_content">全文搜索</string>
     <string name="search_content_size">搜索结果</string>
     <string name="search_content_empty">搜索内容为空，请检查净化或简繁设置</string>
-    <string name="rss_source_empty">RSS 源目前为空！</string>
-    <string name="explore_empty">当前没有发现源！</string>
+    <string name="rss_source_empty">RSS 源目前为空\n可在「我的 → 订阅源」中新建或导入</string>
+    <string name="explore_empty">当前没有发现源\n可在「我的 → 书源管理」中导入带发现规则的书源</string>
     <string name="page_key_set_help">将焦点放到输入框按下物理按键会自动录入键值，多个按键会自动用英文逗号隔开。</string>
     <string name="theme_name">主题名称</string>
     <string name="auto_clear_expired">自动清除过期搜索数据</string>

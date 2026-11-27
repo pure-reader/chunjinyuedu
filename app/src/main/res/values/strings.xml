@@ -574,6 +574,7 @@
     <string name="unknown_author">Unknown</string>
     <string name="archive_chapter_count">%1$d chapters</string>
     <string name="archive_unread_badge">%1$d unread</string>
+    <string name="archive_unread_badge_new">NEW · %1$d unread</string>
     <string name="search_no_result">No books found for “%1$s”</string>
     <string name="search_no_result_hint">Try a different keyword or add more book sources.</string>
     <string name="bookshelf_all_books">All books</string>

@@ -78,8 +78,13 @@ class BooksAdapterList(
                 val unread = item.getUnreadChapterNum()
                 // 纯数字会和上方「共 xx 章」混淆（963 vs 964），带上单位再说清楚是什么
                 if (unread > 0) {
+                    val hasNew = item.lastCheckCount > 0
                     binding.bvUnread.setBadgeText(
-                        context.getString(R.string.archive_unread_badge, unread)
+                        context.getString(
+                            if (hasNew) R.string.archive_unread_badge_new
+                            else R.string.archive_unread_badge,
+                            unread
+                        )
                     )
                 } else {
                     binding.bvUnread.invisible()

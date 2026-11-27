@@ -64,6 +64,17 @@
                     android:orientation="vertical">
 
                     <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="3dp"
+                        android:fontFamily="monospace"
+                        android:letterSpacing="0.12"
+                        android:text="@string/continue_read"
+                        android:textColor="@color/accent"
+                        android:textSize="10sp"
+                        tools:text="继续阅读" />
+
+                    <TextView
                         android:id="@+id/tv_pick_name"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"

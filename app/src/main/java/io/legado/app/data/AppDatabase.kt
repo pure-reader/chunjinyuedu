@@ -253,10 +253,14 @@ abstract class AppDatabase : RoomDatabase() {
                 @Language("sql")
                 val insertBookGroupErrorSql = """
                     insert into book_groups(groupId, groupName, 'order', show) 
-                    select ${BookGroup.IdError}, '更新失败', -1, 1
+                    select ${BookGroup.IdError}, '异常书籍', -1, 1
                     where not exists (select * from book_groups where groupId = ${BookGroup.IdError})
                 """.trimIndent()
                 db.execSQL(insertBookGroupErrorSql)
+                @Language("sql")
+                val upBookGroupErrorNameSql =
+                    "update book_groups set groupName = '异常书籍' where groupId = ${BookGroup.IdError}"
+                db.execSQL(upBookGroupErrorNameSql)
                 @Language("sql")
                 val upBookSourceLoginUiSql =
                     "update book_sources set loginUi = null where loginUi = 'null'"

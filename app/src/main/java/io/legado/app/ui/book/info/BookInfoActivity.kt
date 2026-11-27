@@ -708,7 +708,7 @@ class BookInfoActivity :
         }
         if (intro != introContent) {
             introContent = intro
-            introExpanded = true
+            introExpanded = false
             introCanCollapse = false
         }
         val renderGeneration = ++introRenderGeneration

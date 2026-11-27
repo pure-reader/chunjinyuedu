@@ -121,7 +121,7 @@ object ReaderInfoTemplate {
         ReadTipConfig.batteryPercentage -> BATTERY
         ReadTipConfig.page -> "$PAGE/$TOTAL_PAGES"
         ReadTipConfig.totalProgress -> READ_PROGRESS
-        ReadTipConfig.pageAndTotal -> "$PAGE/$TOTAL_PAGES  $READ_PROGRESS"
+        ReadTipConfig.pageAndTotal -> "页 $PAGE/$TOTAL_PAGES  $READ_PROGRESS"
         ReadTipConfig.bookName -> BOOK_NAME
         ReadTipConfig.timeBattery -> "$TIME  $BATTERY_ICON"
         ReadTipConfig.timeBatteryPercentage -> "$TIME $BATTERY"

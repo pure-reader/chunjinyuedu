@@ -175,9 +175,8 @@ class ReadMenu @JvmOverloads constructor(
             titleBar.setColorFilter(textColor)
             tvChapterName.setTextColor(lightTextColor)
             tvChapterUrl.setTextColor(lightTextColor)
-        } else if (reset) {
-            val bgColor = context.primaryColor
-            val textColor = context.primaryTextColor
+        } else {
+            // 非沉浸模式也与底部工具条同为纸张色，避免顶深底浅（或相反）的割裂感
             titleBar.setTextColor(textColor)
             titleBar.setBackgroundColor(bgColor)
             titleBar.setColorFilter(textColor)
@@ -193,12 +192,17 @@ class ReadMenu @JvmOverloads constructor(
             llBottomBg.setBackgroundResource(R.drawable.bg_eink_border_top)
         } else {
             llBottomBg.setBackgroundColor(bgColor)
+            bottomMenu.setBackgroundColor(bgColor)
         }
-        // 快捷操作已并入底部工具条：只给图标着色，不再给 FAB 上圆形底色
+        // 快捷操作已并入底部工具条：图标与标签都跟随正文文字色，不再给 FAB 上圆形底色
         fabSearch.setColorFilter(textColor)
         fabAutoPage.setColorFilter(textColor)
         fabReplaceRule.setColorFilter(textColor)
         fabNightTheme.setColorFilter(textColor)
+        tvFabSearchLabel.setTextColor(textColor)
+        tvFabAutoPageLabel.setTextColor(textColor)
+        tvFabReplaceRuleLabel.setTextColor(textColor)
+        tvFabNightThemeLabel.setTextColor(textColor)
         val chapterTextColor = Selector.colorBuild()
             .setDefaultColor(textColor)
             .setDisabledColor(ColorUtils.withAlpha(textColor, 0.4f))
@@ -649,7 +653,7 @@ class ReadMenu @JvmOverloads constructor(
             TypedValue.COMPLEX_UNIT_PX,
             chapterNameTextSize + if (chapterNameOnly) 2f * scaledDensity else 0f
         )
-        tvChapterUrl.alpha = if (chapterNameOnly && hasChapterUrl) 0f else 0.7f
+        tvChapterUrl.alpha = if (chapterNameOnly && hasChapterUrl) 0f else 0.45f
         if (hasChapterUrl) {
             tvChapterUrl.visible()
         } else {
