@@ -9,29 +9,50 @@ import android.util.Log
 import io.legado.app.BuildConfig
 import io.legado.app.ui.book.read.page.ReadView
 import io.legado.app.ui.book.read.page.entities.PageDirection
+import io.legado.app.ui.book.read.page.entities.TextPage
 import io.legado.app.utils.canvasrecorder.CanvasRecorder
+import java.util.TreeSet
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.pow
 
 /**
- * 档案流动翻页：整页平滑横移，不再按段落切成条带。
+ * 档案流动翻页：整页按段落横切成条带，各条带沿横向滑走/滑入，条与条错峰。
  *
- * 之前的版本把每页按段间空白切成最多 12 条，逐条错峰起跑，看起来像页面
- * 被抖散成几段。现在两页各光栅化为一整个位图，整页同步位移：
- *   - 旧页在上层向左滑出（上一页则向右）
- *   - 新页在下层从相反方向滑入，两页位移互补，接缝始终贴合
- *   - 位移套 easeInOutSine，松手后按松手瞬间的进度锚点铺开剩余行程
+ * 转场时钟照搬轻小说 ReaderTurnScope 的 relay（lib/reader_turn_motion.dart）：
+ *   start = 0.02 + 0.18 × rank     条的起跑时间，按条带在页面上的位置排
+ *   run   = 0.80                   单条带自己的行程占比（0.20 + 0.80 = 1）
+ *   curve = easeInOutSine          起停都软，中段快
+ *   位移 = 整屏宽度                  条带整体平移一整页，不是轻微晃动
+ *   opacity 恒为 1                  没有淡入淡出、没有阴影、没有斜切
  *
- * 上位图用 CanvasRecorder 的 Picture 分支光栅化，软件画布也能工作；
- * 不再需要找空白行、吸附条带边界，少掉逐条 clip 与多次 drawBitmap。
+ * 为什么看着像"抖"：同一时刻，靠上的条带已经走了一半，靠下的还没起步，
+ * 页面被切成若干段各自平移，段与段错位错峰，像被抖了一下再归位。
+ *
+ * 与斜切版的区别：斜切是"一张纸被抽走"，这里是"文字自己流走"。
+ * 所以两页都得先光栅化成 Bitmap 才能按条带 blit —— RenderNode 只能在硬件画布上画，
+ * 转 Bitmap 走的是 CanvasRecorder 里 Picture 那条分支。
+ *
+ * 两页各按自己的段落切条：新页的条带边界落在新页的段间，旧页的落在旧页的段间，
+ * 谁的文字都不会被横切。旧页画在上层，旧页某段滑走后，那一块自然露出下层的新页。
  */
 class RelayPageDelegate(readView: ReadView) : HorizontalPageDelegate(readView) {
 
     companion object {
-        /** 整页转场时长，与原来的错峰条带总时长一致 */
+        /** 轻小说整段转场 620ms */
         private const val DURATION = 620
+
+        /** 条带起跑错峰窗口：页面最深处的条带比最上面晚 18% 的时间出发 */
+        private const val STAGGER = 0.18f
+
+        /** 单条带自身的行程占比 */
+        private const val RUN = 0.80f
+
+        /** 最早出发的条带也不是第 0 毫秒就走 */
+        private const val LEAD = 0.02f
+
+        private const val MAX_BANDS = 12
     }
 
     private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
@@ -41,6 +62,10 @@ class RelayPageDelegate(readView: ReadView) : HorizontalPageDelegate(readView) {
     private var oldFrame: Bitmap? = null
     private var newFrame: Bitmap? = null
 
+    /** 旧页/新页各自的条带边界，含首尾 0 与 height */
+    private var oldBands: IntArray = intArrayOf(0)
+    private var newBands: IntArray = intArrayOf(0)
+
     /** 松手瞬间的线性进度，缓动重映射的锚点 */
     private var releaseProgress = 0f
 
@@ -48,15 +73,22 @@ class RelayPageDelegate(readView: ReadView) : HorizontalPageDelegate(readView) {
         super.setBitmap()
         releaseFrames()
         if (viewWidth <= 0 || viewHeight <= 0) return
+        val target: TextPage?
         when (mDirection) {
             PageDirection.NEXT -> {
                 oldFrame = rasterize(curRecorder)
                 newFrame = rasterize(nextRecorder)
+                target = nextPage.textPage
+                oldBands = bandsOf(oldFrame, curPage.textPage, curPage.contentTop)
+                newBands = bandsOf(newFrame, target, nextPage.contentTop)
             }
 
             PageDirection.PREV -> {
                 oldFrame = rasterize(curRecorder)
                 newFrame = rasterize(prevRecorder)
+                target = prevPage.textPage
+                oldBands = bandsOf(oldFrame, curPage.textPage, curPage.contentTop)
+                newBands = bandsOf(newFrame, target, prevPage.contentTop)
             }
 
             else -> return
@@ -85,6 +117,112 @@ class RelayPageDelegate(readView: ReadView) : HorizontalPageDelegate(readView) {
         }
     }
 
+    /**
+     * 单页的条带边界 = 该页每个段落的起始行。
+     * lineTop 只是候选值（ContentTextView 内部还有一层坐标平移），
+     * 所以再用页面像素的横向投影把候选值吸附到附近最空的一行 ——
+     * 那一行一定是行与行之间或段与段之间，绝不会切在字上。
+     */
+    private fun bandsOf(frame: Bitmap?, page: TextPage?, contentTop: Int): IntArray {
+        val height = frame?.height ?: viewHeight
+        if (height <= 0) return intArrayOf(0)
+        val cuts = TreeSet<Int>()
+        cuts.add(0)
+        cuts.add(height)
+
+        page?.lines?.let { lines ->
+            var lastParagraph = -1
+            for (line in lines) {
+                val no = line.paragraphNum
+                if (no <= 0) continue
+                if (lastParagraph != -1 && no != lastParagraph) {
+                    val y = (line.lineTop + contentTop).toInt()
+                    if (y > height * 0.04f && y < height * 0.96f) cuts.add(y)
+                }
+                lastParagraph = no
+            }
+        }
+
+        var list = cuts.toIntArray()
+        if (list.size - 1 > MAX_BANDS) {
+            val picked = IntArray(MAX_BANDS + 1)
+            for (i in 0..MAX_BANDS) picked[i] = list[i * (list.size - 1) / MAX_BANDS]
+            picked[0] = 0
+            picked[MAX_BANDS] = height
+            list = picked
+        }
+        if (list.size < 2) return intArrayOf(0, height)
+
+        val lineHeight = estimateLineHeight(page, height)
+        val minGap = (lineHeight * 0.85f).toInt().coerceAtLeast(24)
+
+        if (frame == null) return list
+        val radius = (lineHeight * 0.8f).toInt().coerceAtLeast(16)
+        for (i in 1 until list.size - 1) {
+            list[i] = snapToBlank(frame, list[i], radius)
+        }
+        // 吸附后可能挤到一起：近邻只留一个，且每条带至少一行高，否则会出现"半行文字"
+        val fixed = ArrayList<Int>(list.size)
+        fixed.add(0)
+        for (i in 1 until list.size - 1) {
+            val y = list[i]
+            if (y - fixed.last() < minGap) continue
+            if (height - y < minGap) continue
+            fixed.add(y)
+        }
+        fixed.add(height)
+        return fixed.toIntArray()
+    }
+
+    /** 行高取页内相邻行间距的中位数，标题行与图片行不参与 */
+    private fun estimateLineHeight(page: TextPage?, height: Int): Float {
+        val gaps = ArrayList<Float>()
+        page?.lines?.let { lines ->
+            for (i in 1 until lines.size) {
+                val gap = lines[i].lineTop - lines[i - 1].lineTop
+                if (gap > 8f && gap < height * 0.2f) gaps.add(gap)
+            }
+        }
+        if (gaps.isEmpty()) return height / 24f
+        gaps.sort()
+        return gaps[gaps.size / 2]
+    }
+
+    /**
+     * 在 [y - radius, y + radius] 里找横向投影最空的一行。
+     * 采样列数不用多：一行字几乎每列都有墨，行间空白则整行同色。
+     */
+    private fun snapToBlank(frame: Bitmap, y: Int, radius: Int): Int {
+        val w = frame.width
+        if (w <= 0) return y
+        val from = (y - radius).coerceAtLeast(1)
+        val to = (y + radius).coerceAtMost(frame.height - 2)
+        if (to <= from) return y
+        val step = (w / 48).coerceAtLeast(1)
+        val row = IntArray(w)
+        var bestY = y
+        var bestInk = Int.MAX_VALUE
+        for (rowY in from..to) {
+            frame.getPixels(row, 0, w, 0, rowY, w, 1)
+            var ink = 0
+            var x = 0
+            while (x < w) {
+                val p = row[x]
+                val r = (p shr 16) and 0xFF
+                val g = (p shr 8) and 0xFF
+                val b = p and 0xFF
+                // 深色像素视为字迹，纸底和浅色装饰都不计
+                if (r + g + b < 480) ink++
+                x += step
+            }
+            if (ink < bestInk) {
+                bestInk = ink
+                bestY = rowY
+            }
+        }
+        return bestY
+    }
+
     override fun onDraw(canvas: Canvas) {
         if (!isRunning) return
         val old = oldFrame ?: return
@@ -102,20 +240,52 @@ class RelayPageDelegate(readView: ReadView) : HorizontalPageDelegate(readView) {
         val time = if (isStarted && !isCancel) settleEase(linear) else linear
         if (time <= 0f) return
 
-        val eased = (0.5f - 0.5f * cos(PI * time)).toFloat()
         // NEXT 时旧页向左走，PREV 时向右走
         val outward = if (isNext) -1f else 1f
-        val shift = w * eased
-        drawPage(canvas, incoming, -outward * (w - shift))
-        drawPage(canvas, old, outward * shift)
+        // 新页先铺下层：旧页各段滑走时从这里过
+        drawBands(canvas, incoming, newBands, time, outward, outgoing = false, w = w)
+        // 旧页压在上层，整页各段一起流走
+        drawBands(canvas, old, oldBands, time, outward, outgoing = true, w = w)
     }
 
-    private fun drawPage(canvas: Canvas, frame: Bitmap, dx: Float) {
-        val w = viewWidth.toFloat()
+    private fun drawBands(
+        canvas: Canvas,
+        frame: Bitmap,
+        bands: IntArray,
+        time: Float,
+        outward: Float,
+        outgoing: Boolean,
+        w: Float
+    ) {
+        val count = bands.size - 1
+        if (count <= 0) return
+        val h = frame.height.toFloat()
         srcRect.set(0, 0, frame.width, frame.height)
-        dstRect.set(0f, 0f, w, frame.height.toFloat())
-        dstRect.offsetTo(dx, 0f)
-        canvas.drawBitmap(frame, srcRect, dstRect, paint)
+        for (i in 0 until count) {
+            val top = bands[i]
+            val bottom = bands[i + 1]
+            if (bottom <= top) continue
+            val rank = if (count <= 1) 0f else i / (count - 1f)
+            val progress = relayProgress(rank, time)
+            // 同一 progress 下两页位移正好互补，接缝处一页的右缘贴着另一页的左缘
+            val dx = if (outgoing) outward * w * progress else -outward * w * (1f - progress)
+            dstRect.set(0f, 0f, w, h)
+            dstRect.offsetTo(dx, 0f)
+            canvas.save()
+            canvas.clipRect(0f, top.toFloat(), w, bottom.toFloat())
+            canvas.drawBitmap(frame, srcRect, dstRect, paint)
+            canvas.restore()
+        }
+    }
+
+    /**
+     * 单条带的进度：按 rank 错峰起跑，再套 easeInOutSine。
+     * rank 取条带序号而非段落序号，短段与长段得到相同的时间梯度，波浪更均匀。
+     */
+    private fun relayProgress(rank: Float, time: Float): Float {
+        val start = LEAD + STAGGER * rank
+        val raw = ((time - start) / RUN).coerceIn(0f, 1f)
+        return (0.5f - 0.5f * cos(PI * raw)).toFloat()
     }
 
     /**
@@ -183,5 +353,7 @@ class RelayPageDelegate(readView: ReadView) : HorizontalPageDelegate(readView) {
         newFrame?.recycle()
         oldFrame = null
         newFrame = null
+        oldBands = intArrayOf(0)
+        newBands = intArrayOf(0)
     }
 }

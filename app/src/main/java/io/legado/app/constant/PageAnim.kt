@@ -18,7 +18,7 @@ object PageAnim {
     /** 档案斜切：纸片沿斜边抽走，新页斜向落位（轻小说式转场） */
     const val slantPageAnim = 5
 
-    /** 档案流动：整页平滑横移，两页位移互补，不再按段落切条 */
+    /** 档案流动：整页按段落切条横移，条与条错峰，翻页时页面像被抖了一下 */
     const val relayPageAnim = 6
 
     @Target(AnnotationTarget.VALUE_PARAMETER)

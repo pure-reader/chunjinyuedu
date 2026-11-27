@@ -259,7 +259,7 @@ data class Book(
         if (pageAnim < 0) {
             pageAnim = ReadBookConfig.pageAnim
         }
-        // 旧版“档案纸/斜切”是默认动画，统一迁移到当前“流动”效果，
+        // 旧版“档案纸/斜切”是默认动画，统一迁移到当前“流动抖动”效果，
         // 避免书籍里保存的历史覆盖值盖过新默认值。
         if (pageAnim == PageAnim.slantPageAnim) {
             pageAnim = PageAnim.relayPageAnim
