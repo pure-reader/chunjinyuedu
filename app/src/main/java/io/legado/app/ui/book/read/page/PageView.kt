@@ -29,6 +29,7 @@ import io.legado.app.help.HighlightStyle
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ReadTipConfig
+import io.legado.app.help.config.ReaderInfoTemplate
 import io.legado.app.help.config.ReaderInfoValues
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.model.ReadBook
@@ -264,6 +265,12 @@ class PageView(context: Context) : FrameLayout(context) {
     }
 
     private fun renderReaderInfo() {
+        val loading = readerInfoValues.isLoading
+        val progressTokens = arrayOf(
+            ReaderInfoTemplate.PAGE, ReaderInfoTemplate.TOTAL_PAGES,
+            ReaderInfoTemplate.READ_PROGRESS, ReaderInfoTemplate.CHAPTER,
+            ReaderInfoTemplate.TOTAL_CHAPTERS,
+        )
         readerInfoViews.forEach { readerInfoView ->
             val view = readerInfoView.view
             val template = readerInfoView.template
@@ -277,6 +284,22 @@ class PageView(context: Context) : FrameLayout(context) {
                     return@forEach
                 }
                 view.contentDescription = null
+            }
+            // 加载/报错页的页码与进度是假数据（如 1/0、0.0%），只留书名，隐藏进度类页脚
+            if (loading) {
+                if (view === binding.tvHeaderLeft) {
+                    view.isGone = readerInfoValues.bookName.isEmpty()
+                    if (readerInfoValues.bookName.isNotEmpty()) {
+                        fitHeaderLeftText(view, readerInfoValues.bookName)
+                    }
+                    return@forEach
+                }
+                if (view !== binding.tvHeaderRight &&
+                    progressTokens.any { template.contains(it) }
+                ) {
+                    view.isGone = true
+                    return@forEach
+                }
             }
             if (view === binding.tvFooterLeft) {
                 view.isInvisible = template.isEmpty()
@@ -501,6 +524,7 @@ class PageView(context: Context) : FrameLayout(context) {
             readProgress = readProgress,
             chapter = chapterIndex.plus(1).toString(),
             totalChapters = chapterSize.toString(),
+            isLoading = isMsgPage,
         )
         renderReaderInfo()
     }

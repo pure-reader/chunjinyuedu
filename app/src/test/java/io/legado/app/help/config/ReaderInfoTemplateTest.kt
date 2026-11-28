@@ -136,7 +136,7 @@ class ReaderInfoTemplateTest {
             ReadTipConfig.batteryPercentage to "{电量}",
             ReadTipConfig.page to "{页码}/{总页数}",
             ReadTipConfig.totalProgress to "{阅读进度}",
-            ReadTipConfig.pageAndTotal to "{页码}/{总页数}  {阅读进度}",
+            ReadTipConfig.pageAndTotal to "本页 {页码}/{总页数} · 全书 {阅读进度}",
             ReadTipConfig.bookName to "{书名}",
             ReadTipConfig.timeBattery to "{时间}  {电量图标}",
             ReadTipConfig.timeBatteryPercentage to "{时间} {电量}",

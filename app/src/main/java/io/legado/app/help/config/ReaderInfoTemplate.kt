@@ -10,6 +10,8 @@ data class ReaderInfoValues(
     val readProgress: String = "",
     val chapter: String = "",
     val totalChapters: String = "",
+    /** 正文正在加载/报错（消息页），此时页码与进度无意义，渲染时隐藏进度类页脚。 */
+    val isLoading: Boolean = false,
 )
 
 sealed interface ReaderInfoPart {
@@ -121,7 +123,7 @@ object ReaderInfoTemplate {
         ReadTipConfig.batteryPercentage -> BATTERY
         ReadTipConfig.page -> "$PAGE/$TOTAL_PAGES"
         ReadTipConfig.totalProgress -> READ_PROGRESS
-        ReadTipConfig.pageAndTotal -> "页 $PAGE/$TOTAL_PAGES  $READ_PROGRESS"
+        ReadTipConfig.pageAndTotal -> "本页 $PAGE/$TOTAL_PAGES · 全书 $READ_PROGRESS"
         ReadTipConfig.bookName -> BOOK_NAME
         ReadTipConfig.timeBattery -> "$TIME  $BATTERY_ICON"
         ReadTipConfig.timeBatteryPercentage -> "$TIME $BATTERY"

@@ -914,7 +914,7 @@
     <string name="no_default_path">没有默认路径</string>
     <string name="change_group">设置分组</string>
     <string name="view_toc">查看目录</string>
-    <string name="toc_preview_hint">仅显示前 %1$d 章 · 共 %2$d 章</string>
+    <string name="toc_preview_hint">显示第 %1$d–%2$d 章 · 共 %3$d 章</string>
     <string name="toc_view_all">查看全部 ›</string>
     <string name="bar_elevation">导航栏阴影</string>
     <string name="bar_elevation_s">当前阴影大小（elevation）：%s</string>

@@ -1083,22 +1083,27 @@ class BookInfoActivity :
             val chapters = withContext(Dispatchers.IO) {
                 runCatching { appDb.bookChapterDao.getChapterList(book.bookUrl) }.getOrNull()
             }.orEmpty()
-            tocAdapter?.submit(chapters.take(TOC_PREVIEW_COUNT))
-            upTocPreviewFooter(chapters.size)
+            // 围绕当前阅读章节取一小段，而不是永远停在前 12 章
+            val readingIndex = book.durChapterIndex.coerceAtLeast(0)
+            val from = (readingIndex - 1).coerceAtLeast(0)
+            val to = (from + TOC_PREVIEW_COUNT).coerceAtMost(chapters.size)
+            val listStart = (to - TOC_PREVIEW_COUNT).coerceAtLeast(0)
+            tocAdapter?.submit(chapters.subList(listStart, to), listStart, readingIndex)
+            upTocPreviewFooter(listStart, to, chapters.size)
             binding.flActionFrost.post { binding.flActionFrost.scheduleRefresh() }
         }
     }
 
     /**
-     * 目录只渲染前 [TOC_PREVIEW_COUNT] 章，必须显式告诉用户"后面还有"。
-     * 否则页头写"共 964 章"、列表断在第 12 章且下方留白，读起来就是加载失败。
+     * 目录预览只渲染当前章节附近的一小段，必须显式告诉用户"后面还有"。
+     * 提示写成真实区间（第 N–M 章），避免看起来像加载失败。
      */
-    private fun upTocPreviewFooter(loadedCount: Int) {
-        val hasMore = loadedCount > TOC_PREVIEW_COUNT
+    private fun upTocPreviewFooter(from: Int, to: Int, chapterCount: Int) {
+        val hasMore = chapterCount > TOC_PREVIEW_COUNT
         binding.llTocMore.visible(hasMore)
         if (!hasMore) return
         binding.tvTocMoreHint.text =
-            getString(R.string.toc_preview_hint, TOC_PREVIEW_COUNT, loadedCount)
+            getString(R.string.toc_preview_hint, from + 1, to, chapterCount)
     }
 
     private fun upTvBookshelf() {
