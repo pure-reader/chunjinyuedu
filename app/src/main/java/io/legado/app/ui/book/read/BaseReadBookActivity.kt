@@ -13,7 +13,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.WindowManager
-import android.view.animation.PathInterpolator
+import android.view.animation.LinearInterpolator
 import androidx.activity.viewModels
 import androidx.core.animation.doOnCancel
 import androidx.core.animation.doOnEnd
@@ -142,12 +142,12 @@ abstract class BaseReadBookActivity :
     }
 
     /**
-     * 档案风入场：斜切纸幕揭开 + 内容斜向落位。
-     * 对应轻小说 ArchivePlaneTransition(incoming)，时长 340ms，Cubic(.18,.72,.18,1)。
+     * 档案风入场：纸幕按水平条带错峰流走，与正文翻页的"档案流动"完全统一。
+     * 时长 620ms，外层线性驱动、条带内部 easeInOutSine——与 RelayPageDelegate 同一套时钟。
      *
      * 纸幕在 onCreate 就铺上并保持不透明，等首章内容真正落到页面上
-     * （ReadBookActivity.upContent 的 relativePosition == 0）再揭开，
-     * 否则加载态的"加载中"会把 340ms 动画吃掉。超时兜底 2.6s。
+     * （ReadBookActivity.upContent 的 relativePosition == 0）再流走，
+     * 否则加载态的"加载中"会把动画吃掉。超时兜底 2.6s。
      */
     private fun prepareArchiveEntrance() {
         val content = findViewById<ViewGroup>(android.R.id.content) ?: return
@@ -179,15 +179,16 @@ abstract class BaseReadBookActivity :
         val curtain = entranceCurtain ?: return
         val page = entrancePage ?: return
         val content = curtain.parent as? ViewGroup ?: return
-        // 幕布上印当前书的档案封套信息，揭开时随纸一起被切走
+        // 幕布上印当前书的档案封套信息，流走时随纸带一起被切走
         ReadBook.book?.let { book ->
             curtain.label = book.name
             curtain.fileCode = ArchiveCodeLabel.fileCode(
                 book.bookUrl.hashCode().absoluteValue % 100000
             )
         }
-        val animator = ValueAnimator.ofFloat(0f, 1f).setDuration(340L)
-        animator.interpolator = PathInterpolator(0.18f, 0.72f, 0.18f, 1f)
+        // 外层线性推进，条带内部的错峰起跑 + easeInOutSine 由 ArchiveCurtainView 自己完成
+        val animator = ValueAnimator.ofFloat(0f, 1f).setDuration(620L)
+        animator.interpolator = LinearInterpolator()
         animator.addUpdateListener {
             val progress = it.animatedValue as Float
             curtain.progress = progress
