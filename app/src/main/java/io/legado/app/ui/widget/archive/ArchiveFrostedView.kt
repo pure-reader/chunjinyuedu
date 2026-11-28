@@ -68,8 +68,8 @@ class ArchiveFrostedView @JvmOverloads constructor(
         }
 
     /**
-     * 纸色 tint 遮盖强度。主导航胶囊压在滚动列表上，0.30 能透出内容色块；
-     * 图书详情页压着静止的章节目录，需要更高值（0.52）压住字形避免文字重叠。
+     * 纸色 tint 遮盖强度。导航胶囊作为标签底块的核心浓度（配合羽化叠层）；
+     * 图书详情页压着静止的章节目录，用较高值压住字形避免文字重叠。
      */
     var tintAlpha: Float = 0.30f
         set(value) {
@@ -77,9 +77,16 @@ class ArchiveFrostedView @JvmOverloads constructor(
             invalidate()
         }
 
+    /** 导航胶囊标签之间的空白区基础 tint：淡到能透出下方内容，又不至于和底块硬切。 */
+    var blankTintAlpha: Float = 0.14f
+        set(value) {
+            field = value.coerceIn(0f, 1f)
+            invalidate()
+        }
+
     /**
-     * 导航项数量。>0 时 tint 按 item 分块：每个标签正下方画一块 [tintAlpha] 圆角浅底保证清晰，
-     * 标签之间与两侧不画 tint、完全透出下方内容。0 表示整条统一浓度（详情页用）。
+     * 导航项数量。>0 时 tint 按 item 分块：每个标签正下方画一组羽化圆角浅底保证清晰，
+     * 标签之间与两侧只铺 [blankTintAlpha] 的淡 tint、透出下方内容。0 表示整条统一浓度（详情页用）。
      */
     var navSlotCount: Int = 0
         set(value) {
@@ -180,19 +187,32 @@ class ArchiveFrostedView @JvmOverloads constructor(
         }
 
         // 纸色 tint：压住底下的字形轮廓，只留色块，才是玻璃而不是半透明蒙版。
-        // 导航胶囊按 item 分块：每个标签正下方画一块不透明圆角浅底保证清晰，
-        // 标签之间与两侧完全不画 tint，直接透出下方内容（参考悬浮玻璃效果）。
+        // 导航胶囊按 item 分块：整条先铺一层淡 tint（空白区透出内容），
+        // 每个标签正下方再叠几层由大到小的圆角浅底做羽化，避免底块与空白硬切。
         if (navSlotCount > 0) {
             val slotW = w / navSlotCount
-            val blockW = slotW * 0.66f
-            val blockH = h * 0.86f
-            val left0 = (h - blockH) / 2f
-            val r = minOf(blockW, blockH) * 0.32f
-            tint.color = withAlpha(surfaceColor, tintAlpha)
+            tint.color = withAlpha(surfaceColor, blankTintAlpha)
+            canvas.drawRect(0f, 0f, w, h, tint)
+
+            val coreW = slotW * 0.66f
+            val coreH = h * 0.86f
+            val top = (h - coreH) / 2f
+            // 由外到内、由淡到浓叠 4 层，边缘柔和过渡；最内层核心保证文字清晰
+            val scales = floatArrayOf(1.22f, 1.13f, 1.05f, 0.98f)
+            val alphas = floatArrayOf(0.20f, 0.30f, 0.42f, 0.55f)
             for (i in 0 until navSlotCount) {
                 val cx = slotW * (i + 0.5f)
-                val l = cx - blockW / 2f
-                canvas.drawRoundRect(l, left0, l + blockW, left0 + blockH, r, r, tint)
+                for (j in scales.indices) {
+                    val bw = coreW * scales[j]
+                    val bh = coreH * scales[j]
+                    val r = minOf(bw, bh) * 0.30f
+                    tint.color = withAlpha(surfaceColor, alphas[j] * tintAlpha / 0.78f)
+                    canvas.drawRoundRect(
+                        cx - bw / 2f, h / 2f - bh / 2f,
+                        cx + bw / 2f, h / 2f + bh / 2f,
+                        r, r, tint
+                    )
+                }
             }
         } else {
             tint.color = withAlpha(surfaceColor, tintAlpha)
