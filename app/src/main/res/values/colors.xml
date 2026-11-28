@@ -22,6 +22,8 @@
     <color name="night_mask">#00000000</color>
 
     <color name="background">#F4F3EF</color>
+    <!-- 主页胶囊背后的渐隐层：半透明纸色，透出下方列表色块供毛玻璃采样 -->
+    <color name="nav_scrim_glass">#73F4F3EF</color>
     <color name="background_card">#FDFCFA</color>
     <color name="background_menu">#EDECE6</color>
     <!-- 详情页"继续阅读"胶囊：半透明纸色，透出底下毛玻璃 -->

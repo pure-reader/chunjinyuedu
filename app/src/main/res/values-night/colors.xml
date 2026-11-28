@@ -12,6 +12,8 @@
     <color name="disabled">#33FFFFFF</color>
 
     <color name="background">#191919</color>
+    <!-- 主页胶囊背后的渐隐层：半透明深色，透出下方列表色块供毛玻璃采样 -->
+    <color name="nav_scrim_glass">#73191919</color>
     <color name="background_card">#242424</color>
     <color name="background_menu">#2D2D2D</color>
     <color name="background_pill_glass">#472D2D2D</color>

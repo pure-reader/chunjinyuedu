@@ -78,19 +78,12 @@ class ArchiveFrostedView @JvmOverloads constructor(
         }
 
     /**
-     * 导航项数量。>0 时 tint 改为横向分段渐变：每个导航项正下方用 [tintAlpha]（图标文字清晰），
-     * 项间与两侧空白用 [blankTintAlpha]（更透，露出下方色块）。0 表示整条统一浓度。
+     * 导航项数量。>0 时 tint 按 item 分块：每个标签正下方画一块 [tintAlpha] 圆角浅底保证清晰，
+     * 标签之间与两侧不画 tint、完全透出下方内容。0 表示整条统一浓度（详情页用）。
      */
     var navSlotCount: Int = 0
         set(value) {
             field = value.coerceAtLeast(0)
-            invalidate()
-        }
-
-    /** 空白区 tint 强度，仅当 [navSlotCount] > 0 时生效。 */
-    var blankTintAlpha: Float = 0.30f
-        set(value) {
-            field = value.coerceIn(0f, 1f)
             invalidate()
         }
 
@@ -187,28 +180,20 @@ class ArchiveFrostedView @JvmOverloads constructor(
         }
 
         // 纸色 tint：压住底下的字形轮廓，只留色块，才是玻璃而不是半透明蒙版。
-        // 导航胶囊开启分段后，每个 item 正下方保持 tintAlpha（图标文字清晰），
-        // 项间与两侧空白用更低的 blankTintAlpha，让下方色块透出来。
+        // 导航胶囊按 item 分块：每个标签正下方画一块不透明圆角浅底保证清晰，
+        // 标签之间与两侧完全不画 tint，直接透出下方内容（参考悬浮玻璃效果）。
         if (navSlotCount > 0) {
-            val stops = navSlotCount * 2 + 1
-            val positions = FloatArray(stops)
-            val colors = IntArray(stops)
-            for (j in 0 until stops) {
-                if (j % 2 == 0) {
-                    val k = j / 2
-                    positions[j] = k.toFloat() / navSlotCount
-                    colors[j] = withAlpha(surfaceColor, blankTintAlpha)
-                } else {
-                    val k = j / 2
-                    positions[j] = (k + 0.5f) / navSlotCount
-                    colors[j] = withAlpha(surfaceColor, tintAlpha)
-                }
+            val slotW = w / navSlotCount
+            val blockW = slotW * 0.66f
+            val blockH = h * 0.86f
+            val left0 = (h - blockH) / 2f
+            val r = minOf(blockW, blockH) * 0.32f
+            tint.color = withAlpha(surfaceColor, tintAlpha)
+            for (i in 0 until navSlotCount) {
+                val cx = slotW * (i + 0.5f)
+                val l = cx - blockW / 2f
+                canvas.drawRoundRect(l, left0, l + blockW, left0 + blockH, r, r, tint)
             }
-            tint.shader = LinearGradient(
-                0f, 0f, w, 0f, colors, positions, Shader.TileMode.CLAMP
-            )
-            canvas.drawRect(0f, 0f, w, h, tint)
-            tint.shader = null
         } else {
             tint.color = withAlpha(surfaceColor, tintAlpha)
             canvas.drawRect(0f, 0f, w, h, tint)

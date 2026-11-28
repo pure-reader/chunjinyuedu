@@ -269,14 +269,11 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         ArchivePagerEasing.apply(viewPagerMain)
         // 悬浮胶囊：圆角取高度一半，图标/文字用固定的黑白配色，不跟随主题主色
         bottomFrost.cornerRadius = 36f * resources.displayMetrics.density
-        // 胶囊底下已有一层底部渐隐把滚动文字淡掉；tint 降到 0.58 让列表色块明显透出来，
-        // 同时把 blur 提到 10，底下的字形会彻底糊成色块，不会干扰胶囊上的图标文字。
-        bottomFrost.tintAlpha = 0.58f
+        // 胶囊底下是半透明渐隐层：图标文字正下方用接近不透明的纸色保证清晰，
+        // 红框空白区（项间与两侧）tint 为 0、完全透出下方列表，参考悬浮玻璃效果。
+        bottomFrost.tintAlpha = 0.97f
         bottomFrost.blurDivisor = 10
-        // 四个导航项正下方保持 0.58 保证图标文字清晰；项间空白压到 0.24，
-        // 让胶囊空白区明显透出下方列表，消除整条糊成一片的感觉。
         bottomFrost.navSlotCount = 4
-        bottomFrost.blankTintAlpha = 0.10f
         bottomFrost.attachTo(viewPagerMain)
         this@MainActivity.applyPillNavStyle()
         bottomNavigationView.setOnNavigationItemSelectedListener(this@MainActivity)

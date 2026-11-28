@@ -17,7 +17,7 @@
         android:layout_width="match_parent"
         android:layout_height="@dimen/nav_bottom_scrim_height"
         android:layout_gravity="bottom"
-        android:background="@drawable/bg_archive_bottom_scrim"
+        android:background="@drawable/bg_nav_scrim_glass"
         android:importantForAccessibility="no"
         tools:ignore="SpeakableTextPresentCheck" />
 
