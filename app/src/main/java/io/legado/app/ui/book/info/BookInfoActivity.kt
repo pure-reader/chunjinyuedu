@@ -283,10 +283,10 @@ class BookInfoActivity :
         binding.vwBg.applyNavigationBarPadding()
         binding.flActionFrost.attachTo(binding.scrollView)
         // 详情页底部压着静止的章节目录，主导航用的 0.30 tint 太透会文字重叠；
-        // tint 0.84 让目录色块透出来，blur 提到 12 把字形彻底糊成色块，
-        // 按钮上的文字仍然清晰，玻璃感比 0.97 明显。
+        // tint 0.84 让目录色块透出来，blur 提到 18 把静止字形彻底糊成色块，
+        // 目录文字不会从按钮后透出可读的半截，同时保留玻璃通透感。
         binding.flActionFrost.tintAlpha = 0.84f
-        binding.flActionFrost.blurDivisor = 12
+        binding.flActionFrost.blurDivisor = 18
         binding.flActionFrost.showEdge = false
         binding.tvShelf.setTextColor(getPrimaryTextColor(ColorUtils.isColorLight(bottomBackground)))
         binding.tvToc.text = getString(R.string.toc_s, getString(R.string.loading))
@@ -855,11 +855,10 @@ class BookInfoActivity :
     private fun applyIntroCollapseState(tvIntro: ScrollTextView = introTextView) {
         tvIntro.internalScrollEnabled = false
         tvIntro.maxLines = if (introExpanded) Int.MAX_VALUE else BookIntroCollapse.COLLAPSED_LINES
-        tvIntro.maxMeasuredHeight = if (introExpanded) {
-            null
-        } else {
-            collapsedIntroHeight(tvIntro)
-        }
+        // 折叠只靠 maxLines + 末尾省略号，让 TextView 自己按整行算高度。
+        // 之前还用 maxMeasuredHeight 按像素裁 View，和 maxLines 的行高对不齐，
+        // 会把最后一行的上半截切掉。展开态本就不限高，两种状态都置 null。
+        tvIntro.maxMeasuredHeight = null
         tvIntro.ellipsize = if (introExpanded) null else TextUtils.TruncateAt.END
         if (!introExpanded) {
             tvIntro.scrollTo(0, 0)
@@ -868,9 +867,14 @@ class BookInfoActivity :
         tvIntro.requestLayout()
     }
 
-    private fun collapsedIntroHeight(tvIntro: ScrollTextView): Int =
-        tvIntro.lineHeight * BookIntroCollapse.COLLAPSED_LINES +
-            tvIntro.compoundPaddingTop + tvIntro.compoundPaddingBottom
+    private fun collapsedIntroHeight(tvIntro: ScrollTextView): Int {
+        // 只按 lineHeight*N 算会漏掉首行 top 到 ascent 的字体留白，
+        // 末行会被切掉上半截。用 fontMetrics 的真实上下沿算 N 行完整高度。
+        val fm = tvIntro.paint.fontMetrics
+        val textHeight = tvIntro.lineHeight * (BookIntroCollapse.COLLAPSED_LINES - 1) +
+            (fm.descent - fm.top)
+        return (textHeight + tvIntro.compoundPaddingTop + tvIntro.compoundPaddingBottom).toInt()
+    }
 
     private fun scheduleIntroOverflowCheck(renderGeneration: Int) {
         introTextView.post {
@@ -1021,9 +1025,8 @@ class BookInfoActivity :
      * 档案版头部：编号、状态行、底部"继续阅读"胶囊，并加载目录预览。
      */
     private fun upArchivePage(book: Book) {
-        val code = ArchiveTokens.fileCode(book.bookUrl.hashCode().absoluteValue % 100000)
-        // 档案号只在书脊下方露一次，顶部那行已经删掉，避免同一个编号出现两遍
-        binding.tvArchiveCode.text = code
+        // 档案编码对用户无信息量，隐藏徽章（书脊上的编号仍保留装饰）
+        binding.tvArchiveCode.gone()
         upArchiveStatus(book)
         binding.tvRead.text = if (book.totalChapterNum > 0) {
             getString(

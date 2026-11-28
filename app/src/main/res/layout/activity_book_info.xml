@@ -418,6 +418,8 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
+                            android:paddingBottom="72dp"
+                            android:clipToPadding="false"
                             android:overScrollMode="never"
                             android:scrollbars="none"
                             tools:itemCount="6"

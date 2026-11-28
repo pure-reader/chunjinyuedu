@@ -418,3 +418,23 @@ fun tryParesExportFileName(jsStr: String): Boolean {
         parseExportFileNameResult(RhinoScriptEngine.eval(jsStr, bindings)) != null
     }.getOrDefault(false)
 }
+
+/**
+ * 书架进度行展示用：剥掉书源标题里与「第N章」重复的序号前缀，
+ * 例如 "2.第2章 赤心队" -> "第2章 赤心队"。
+ * 仅当前缀数字与紧随的「第N章」一致时剥离，避免误伤 "2024.年度总结" 这类真实标题。
+ * 只影响展示，不改库里的 durChapterTitle 原文。
+ */
+private val shelfChapterPrefixRegex = Regex(
+    """^\s*(\d{1,4})\s*[.．]\s*(第\d{1,5}章)"""
+)
+
+fun String?.stripShelfChapterIndex(): String? {
+    if (this == null) return null
+    val match = shelfChapterPrefixRegex.find(this) ?: return this
+    val prefix = match.groupValues[1].toIntOrNull() ?: return this
+    val chapterNum = Regex("""第(\d{1,5})章""").find(match.groupValues[2])
+        ?.groupValues?.get(1)?.toIntOrNull() ?: return this
+    if (prefix != chapterNum) return this
+    return substring(match.range.last + 1).takeIf { it.isNotBlank() } ?: this
+}

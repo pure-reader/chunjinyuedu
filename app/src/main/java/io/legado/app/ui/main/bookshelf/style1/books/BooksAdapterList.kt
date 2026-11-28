@@ -10,6 +10,7 @@ import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.data.entities.Book
 import io.legado.app.databinding.ItemBookshelfListBinding
 import io.legado.app.help.book.isLocal
+import io.legado.app.help.book.stripShelfChapterIndex
 import io.legado.app.help.config.AppConfig
 import io.legado.app.ui.main.bookshelf.updateBookshelfReadProgress
 import io.legado.app.utils.invisible
@@ -38,7 +39,7 @@ class BooksAdapterList(
             tvListCode.setFileCode(item.bookUrl.hashCode().absoluteValue % 100000)
             tvName.text = item.name
             tvAuthor.text = item.author
-            tvRead.text = item.durChapterTitle
+            tvRead.text = item.durChapterTitle.stripShelfChapterIndex()
             tvLast.text = item.latestChapterTitle
             ivCover.load(item, false)
             upRefresh(binding, item)
@@ -50,7 +51,7 @@ class BooksAdapterList(
                     when (it) {
                         "name" -> tvName.text = item.name
                         "author" -> tvAuthor.text = item.author
-                        "dur" -> tvRead.text = item.durChapterTitle
+                        "dur" -> tvRead.text = item.durChapterTitle.stripShelfChapterIndex()
                         "last" -> tvLast.text = item.latestChapterTitle
                         "cover" -> ivCover.load(
                             item,

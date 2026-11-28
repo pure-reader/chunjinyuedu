@@ -80,7 +80,8 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
         }
     }
     private var booksFlowJob: Job? = null
-    private var syncingFromPick = false
+    /** 全量排序后的书单；列表展示时会剔除精选当前选中那本，避免一屏出现两次同一本 */
+    private var allBooks: List<Book> = emptyList()
     var position = 0
         private set
     var groupId = -1L
@@ -118,15 +119,10 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
         spineShelf.onSelect = { index -> bindPickInfo(index) }
         spineShelf.onSettle = { index ->
             bindPickInfo(index)
-            val lm = rvBookshelf.layoutManager as? LinearLayoutManager
-            val first = lm?.findFirstVisibleItemPosition() ?: RecyclerView.NO_POSITION
-            // 列表本来就在这一本上（滚动列表反向同步书脊）时不要再滚一次，
-            // 否则手指刚抬起列表又自己补一段动画，看起来就是卡一下
-            if (first != index) {
-                syncingFromPick = true
-                rvBookshelf.smoothScrollToPosition(index)
-                rvBookshelf.postDelayed({ syncingFromPick = false }, 400L)
-            }
+            // 精选切换后重建列表：剔除当前精选那本，避免精选与列表首项重复。
+            // 书脊现在是独立的焦点选择器，列表不再反向驱动它。
+            booksAdapter.setItems(displayBooks())
+            rvBookshelf.scrollToPosition(0)
         }
         spineShelf.onOpen = { open(it) }
         ivPickOpen.setOnClickListener {
@@ -134,19 +130,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
         }
         ivPickPrev.setOnClickListener { stepPick(-1) }
         ivPickNext.setOnClickListener { stepPick(1) }
-        rvBookshelf.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-            override fun onScrollStateChanged(rv: RecyclerView, newState: Int) {
-                if (newState != RecyclerView.SCROLL_STATE_IDLE || syncingFromPick) return
-                val lm = rv.layoutManager as? LinearLayoutManager ?: return
-                val first = lm.findFirstVisibleItemPosition()
-                if (first == RecyclerView.NO_POSITION || first == spineShelf.selectedIndex) return
-                syncingFromPick = true
-                // 由列表滚动驱动的书脊跟随：只重绘，不要再回头滚列表
-                spineShelf.setSelected(first, true, notifySettle = false)
-                bindPickInfo(first)
-                rvBookshelf.postDelayed({ syncingFromPick = false }, 400L)
-            }
-        })
+
     }
 
     /**
@@ -154,21 +138,22 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
      * 否则会出现"书脊停在第一本、列表停在两百本"的错位。
      */
     private fun syncPickToFirstVisible() {
-        val lm = binding.rvBookshelf.layoutManager as? LinearLayoutManager ?: return
-        val first = lm.findFirstVisibleItemPosition()
-        if (first == RecyclerView.NO_POSITION || first == binding.spineShelf.selectedIndex) return
-        binding.spineShelf.setSelected(first, false, notifySettle = false)
-        bindPickInfo(first)
+        // 精选与列表已解耦：列表不再反向改变精选，避免被剔除的书又冒出来。
+    }
+
+    /** 列表展示用的书单：剔除精选当前选中那本 */
+    private fun displayBooks(): List<Book> {
+        val selected = binding.spineShelf.selectedIndex
+        return allBooks.filterIndexed { i, _ -> i != selected }
     }
 
     private fun stepPick(step: Int) {
         val target = (binding.spineShelf.selectedIndex + step)
             .coerceIn(0, (binding.spineShelf.bookCount - 1).coerceAtLeast(0))
         binding.spineShelf.setSelected(target, true, notifySettle = false)
-        syncingFromPick = true
         bindPickInfo(target)
-        binding.rvBookshelf.smoothScrollToPosition(target)
-        binding.rvBookshelf.postDelayed({ syncingFromPick = false }, 400L)
+        booksAdapter.setItems(displayBooks())
+        binding.rvBookshelf.scrollToPosition(0)
     }
 
     private fun bindPickInfo(index: Int) {
@@ -329,6 +314,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
             ).catch {
                 AppLog.put("书架更新出错", it)
             }.conflate().flowOn(Dispatchers.Default).collect { list ->
+                allBooks = list
                 itemCount = list.size
                 val spanCount = bookshelfLayout
                 if (spanCount >= 2) {
@@ -339,7 +325,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
                 binding.pickHeader.isGone = list.isEmpty()
                 binding.spineShelf.submit(list)
                 if (list.isNotEmpty()) bindPickInfo(binding.spineShelf.selectedIndex)
-                booksAdapter.setItems(list)
+                booksAdapter.setItems(displayBooks())
                 // 数据回来后列表可能刚恢复到上次的位置，补一次对齐
                 val rv = binding.rvBookshelf
                 rv.post { if (rv.isAttachedToWindow) syncPickToFirstVisible() }
@@ -372,7 +358,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
     }
 
     fun getBooks(): List<Book> {
-        return booksAdapter.getItems()
+        return allBooks
     }
 
     fun gotoTop() {

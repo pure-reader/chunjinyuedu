@@ -244,9 +244,10 @@ class ReadMenu @JvmOverloads constructor(
     }
 
     fun refreshMenuColorFilter() {
-        if (immersiveMenu) {
-            binding.titleBar.setColorFilter(textColor)
-        }
+        // menu 是在 onCompatCreateOptionsMenu 里才 inflate 的，晚于 initView；
+        // 因此必须在 inflate 后再着色一次。两种模式都要执行：非沉浸模式下顶栏改成了
+        // 纸张色/正文色，若只在沉浸模式着色，右侧图标会保留默认白色而看不清。
+        binding.titleBar.setColorFilter(textColor)
     }
 
     private fun upColorConfig() {
@@ -646,28 +647,19 @@ class ReadMenu @JvmOverloads constructor(
     private fun updateTitleAdditionLayout() = binding.run {
         val chapterNameOnly = AppConfig.showReadTitleChapterNameOnly
         val scaledDensity = resources.displayMetrics.scaledDensity
-        val hasChapterUrl = !tvChapterUrl.text.isNullOrBlank()
         tvChapterName.gravity = Gravity.CENTER_VERTICAL
         tvChapterUrl.gravity = Gravity.CENTER_VERTICAL
         tvChapterName.setTextSize(
             TypedValue.COMPLEX_UNIT_PX,
             chapterNameTextSize + if (chapterNameOnly) 2f * scaledDensity else 0f
         )
-        tvChapterUrl.alpha = if (chapterNameOnly && hasChapterUrl) 0f else 0.45f
-        if (hasChapterUrl) {
-            tvChapterUrl.visible()
-        } else {
-            tvChapterUrl.gone()
-        }
+        // 章节 URL 与右侧书源角标信息重复，且长串地址在纸张背景上很突兀；
+        // 展示层始终隐藏 URL，设置项保留但不影响这里（避免存量偏好导致仍显示）。
+        tvChapterUrl.gone()
         ConstraintSet().apply {
             clone(titleBarAddition)
-            val bottomTarget = if (tvChapterUrl.isGone) {
-                R.id.tv_chapter_name
-            } else {
-                R.id.tv_chapter_url
-            }
-            connect(R.id.tv_custom_btn, ConstraintSet.BOTTOM, bottomTarget, ConstraintSet.BOTTOM)
-            connect(R.id.tv_source_action, ConstraintSet.BOTTOM, bottomTarget, ConstraintSet.BOTTOM)
+            connect(R.id.tv_custom_btn, ConstraintSet.BOTTOM, R.id.tv_chapter_name, ConstraintSet.BOTTOM)
+            connect(R.id.tv_source_action, ConstraintSet.BOTTOM, R.id.tv_chapter_name, ConstraintSet.BOTTOM)
             applyTo(titleBarAddition)
         }
         tvChapterName.translationY = 0f

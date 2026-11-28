@@ -546,7 +546,7 @@ object Restore {
             if (!BackupConfig.ignoreReadConfig &&
                 PreferKey.showReadTitleChapterNameOnly !in map
             ) {
-                edit.putBoolean(PreferKey.showReadTitleChapterNameOnly, false)
+                edit.putBoolean(PreferKey.showReadTitleChapterNameOnly, true)
             }
             if (PreferKey.showExploreCategories !in map) {
                 edit.putBoolean(PreferKey.showExploreCategories, false)

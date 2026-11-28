@@ -955,7 +955,7 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         }
 
     var showReadTitleChapterNameOnly: Boolean
-        get() = appCtx.getPrefBoolean(PreferKey.showReadTitleChapterNameOnly, false)
+        get() = appCtx.getPrefBoolean(PreferKey.showReadTitleChapterNameOnly, true)
         set(value) {
             appCtx.putPrefBoolean(PreferKey.showReadTitleChapterNameOnly, value)
         }
