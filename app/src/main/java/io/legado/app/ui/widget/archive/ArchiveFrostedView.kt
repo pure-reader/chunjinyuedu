@@ -77,6 +77,23 @@ class ArchiveFrostedView @JvmOverloads constructor(
             invalidate()
         }
 
+    /**
+     * 导航项数量。>0 时 tint 改为横向分段渐变：每个导航项正下方用 [tintAlpha]（图标文字清晰），
+     * 项间与两侧空白用 [blankTintAlpha]（更透，露出下方色块）。0 表示整条统一浓度。
+     */
+    var navSlotCount: Int = 0
+        set(value) {
+            field = value.coerceAtLeast(0)
+            invalidate()
+        }
+
+    /** 空白区 tint 强度，仅当 [navSlotCount] > 0 时生效。 */
+    var blankTintAlpha: Float = 0.30f
+        set(value) {
+            field = value.coerceIn(0f, 1f)
+            invalidate()
+        }
+
     /** 降采样倍率：越大越糊。主导航 6 保留可辨识色块；详情页 10 把静止字形彻底糊掉。 */
     var blurDivisor: Int = 6
         set(value) {
@@ -170,14 +187,39 @@ class ArchiveFrostedView @JvmOverloads constructor(
         }
 
         // 纸色 tint：压住底下的字形轮廓，只留色块，才是玻璃而不是半透明蒙版。
-        // 默认 0.30 让滚动内容透得出来；详情页通过 tintAlpha 调高以压住静止文字。
-        tint.color = withAlpha(surfaceColor, tintAlpha)
-        canvas.drawRect(0f, 0f, w, h, tint)
+        // 导航胶囊开启分段后，每个 item 正下方保持 tintAlpha（图标文字清晰），
+        // 项间与两侧空白用更低的 blankTintAlpha，让下方色块透出来。
+        if (navSlotCount > 0) {
+            val stops = navSlotCount * 2 + 1
+            val positions = FloatArray(stops)
+            val colors = IntArray(stops)
+            for (j in 0 until stops) {
+                if (j % 2 == 0) {
+                    val k = j / 2
+                    positions[j] = k.toFloat() / navSlotCount
+                    colors[j] = withAlpha(surfaceColor, blankTintAlpha)
+                } else {
+                    val k = j / 2
+                    positions[j] = (k + 0.5f) / navSlotCount
+                    colors[j] = withAlpha(surfaceColor, tintAlpha)
+                }
+            }
+            tint.shader = LinearGradient(
+                0f, 0f, w, 0f, colors, positions, Shader.TileMode.CLAMP
+            )
+            canvas.drawRect(0f, 0f, w, h, tint)
+            tint.shader = null
+        } else {
+            tint.color = withAlpha(surfaceColor, tintAlpha)
+            canvas.drawRect(0f, 0f, w, h, tint)
+        }
 
-        // 玻璃厚度：顶部 45% 高度叠一层很淡的白，模拟受光面
+        // 玻璃厚度：顶部 45% 高度叠一层很淡的白，模拟受光面。
+        // 导航胶囊空白区要尽量透，白光一并减弱，避免空白区被提亮变"实"。
+        val sheenTop = if (navSlotCount > 0) 0.05f else 0.13f
         sheen.shader = LinearGradient(
             0f, 0f, 0f, h * 0.45f,
-            intArrayOf(withAlpha(Color.WHITE, 0.13f), withAlpha(Color.WHITE, 0f)),
+            intArrayOf(withAlpha(Color.WHITE, sheenTop), withAlpha(Color.WHITE, 0f)),
             null, Shader.TileMode.CLAMP
         )
         canvas.drawRect(0f, 0f, w, h * 0.45f, sheen)
