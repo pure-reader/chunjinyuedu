@@ -2,8 +2,8 @@
 <inset xmlns:android="http://schemas.android.com/apk/res/android"
     android:insetLeft="30dp"
     android:insetRight="30dp"
-    android:insetTop="10dp"
-    android:insetBottom="10dp">
+    android:insetTop="8dp"
+    android:insetBottom="8dp">
     <shape android:shape="oval">
         <solid android:color="@android:color/transparent" />
     </shape>

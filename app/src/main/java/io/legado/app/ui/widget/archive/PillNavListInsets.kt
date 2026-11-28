@@ -18,19 +18,19 @@ import java.util.WeakHashMap
  * 结果就是同一份布局在模拟器和真机上位置完全不同。
  *
  * 这里按导航方式分开处理：
- * - 三键：完整避让系统栏（16dp + inset）；
- * - 手势：只避让小白条的视觉高度（最多 24dp），并保证至少 16dp 间距。
+ * - 三键：完整避让系统栏（10dp + inset）；
+ * - 手势：只避让小白条的视觉高度（最多 24dp），并保证至少 10dp 间距。
  */
 object PillNavInset {
 
-    /** 胶囊高度，与 activity_main.xml 中的 72dp 保持一致。 */
-    const val PILL_HEIGHT_DP = 72f
+    /** 胶囊高度，与 activity_main.xml 中的 64dp 保持一致。 */
+    const val PILL_HEIGHT_DP = 64f
 
-    private const val GAP_KEY_DP = 16f
-    private const val GAP_GESTURE_DP = 8f
+    private const val GAP_KEY_DP = 10f
+    private const val GAP_GESTURE_DP = 4f
     private const val GESTURE_VISUAL_MAX_DP = 24f
-    private const val LIST_BREATH_DP = 8f
-    private const val FALLBACK_RESERVE_DP = 104f
+    private const val LIST_BREATH_DP = 10f
+    private const val FALLBACK_RESERVE_DP = 90f
 
     /**
      * 列表底部需要预留的高度（px），由 MainActivity 拿到真实 inset 后写入。
