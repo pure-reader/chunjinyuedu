@@ -112,17 +112,13 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
     /**
      * 顶部书脊书架：
      * 书脊由 ArchiveSpineShelfView 自绘，选中那本抽出并展开封面；
-     * 滑动书脊时下方列表跟到同一本，滚动列表时书脊自动跟随。
+     * 书脊与下方列表共用同一套书单和顺序，切换精选只更新上方详情卡片。
      */
     private fun initSpineShelf() = binding.run {
-        // 拖动过程中只更新书名/页码，等吸附落定再滚动下方列表，避免列表抖动
+        // 拖动过程中只更新书名/页码；列表与书脊已解耦，切换精选不再重建/滚动列表
         spineShelf.onSelect = { index -> bindPickInfo(index) }
         spineShelf.onSettle = { index ->
             bindPickInfo(index)
-            // 精选切换后重建列表：把当前精选那本移到末尾，避免精选与列表首项重复。
-            // 书脊现在是独立的焦点选择器，列表不再反向驱动它。
-            booksAdapter.setItems(displayBooks())
-            rvBookshelf.scrollToPosition(0)
         }
         spineShelf.onOpen = { open(it) }
         ivPickOpen.setOnClickListener {
@@ -141,21 +137,18 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
         // 精选与列表已解耦：列表不再反向改变精选，避免书单顺序来回跳动。
     }
 
-    /** 列表展示用的书单：精选那本移到末尾，保证书单完整且首项不与精选重复 */
-    private fun displayBooks(): List<Book> {
-        val selected = binding.spineShelf.selectedIndex
-        if (selected !in allBooks.indices) return allBooks
-        val picked = allBooks[selected]
-        return allBooks.filterIndexed { i, _ -> i != selected } + picked
-    }
+    /**
+     * 列表直接沿用书脊的同一套书单和顺序，保证上下一一对应。
+     * 顶部书脊是"聚焦预览"、下方是"全量列表"，同一本在两处出现是预期行为，
+     * 不再为去重而重排，否则用户会觉得上下顺序对不上号。
+     */
+    private fun displayBooks(): List<Book> = allBooks
 
     private fun stepPick(step: Int) {
         val target = (binding.spineShelf.selectedIndex + step)
             .coerceIn(0, (binding.spineShelf.bookCount - 1).coerceAtLeast(0))
         binding.spineShelf.setSelected(target, true, notifySettle = false)
         bindPickInfo(target)
-        booksAdapter.setItems(displayBooks())
-        binding.rvBookshelf.scrollToPosition(0)
     }
 
     private fun bindPickInfo(index: Int) {
