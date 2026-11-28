@@ -27,7 +27,7 @@
         <FrameLayout
             android:id="@+id/spine_container"
             android:layout_width="match_parent"
-            android:layout_height="210dp">
+            android:layout_height="172dp">
 
             <io.legado.app.ui.widget.archive.ArchiveBackdropView
                 android:layout_width="match_parent"

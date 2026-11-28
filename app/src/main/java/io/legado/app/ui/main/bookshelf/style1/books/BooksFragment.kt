@@ -80,7 +80,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
         }
     }
     private var booksFlowJob: Job? = null
-    /** 全量排序后的书单；列表展示时会剔除精选当前选中那本，避免一屏出现两次同一本 */
+    /** 全量排序后的书单；列表展示时会把精选当前那本移到末尾，避免一屏出现两次同一本 */
     private var allBooks: List<Book> = emptyList()
     var position = 0
         private set
@@ -119,7 +119,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
         spineShelf.onSelect = { index -> bindPickInfo(index) }
         spineShelf.onSettle = { index ->
             bindPickInfo(index)
-            // 精选切换后重建列表：剔除当前精选那本，避免精选与列表首项重复。
+            // 精选切换后重建列表：把当前精选那本移到末尾，避免精选与列表首项重复。
             // 书脊现在是独立的焦点选择器，列表不再反向驱动它。
             booksAdapter.setItems(displayBooks())
             rvBookshelf.scrollToPosition(0)
@@ -138,13 +138,15 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
      * 否则会出现"书脊停在第一本、列表停在两百本"的错位。
      */
     private fun syncPickToFirstVisible() {
-        // 精选与列表已解耦：列表不再反向改变精选，避免被剔除的书又冒出来。
+        // 精选与列表已解耦：列表不再反向改变精选，避免书单顺序来回跳动。
     }
 
-    /** 列表展示用的书单：剔除精选当前选中那本 */
+    /** 列表展示用的书单：精选那本移到末尾，保证书单完整且首项不与精选重复 */
     private fun displayBooks(): List<Book> {
         val selected = binding.spineShelf.selectedIndex
-        return allBooks.filterIndexed { i, _ -> i != selected }
+        if (selected !in allBooks.indices) return allBooks
+        val picked = allBooks[selected]
+        return allBooks.filterIndexed { i, _ -> i != selected } + picked
     }
 
     private fun stepPick(step: Int) {
@@ -241,10 +243,10 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
                 } else {
                     when (position) {
                         0 -> {
-                            outRect.set(0, bookshelfMargin + 24, 0, bookshelfMargin)
+                            outRect.set(0, bookshelfMargin + 16, 0, bookshelfMargin)
                         }
                         itemCount - 1 -> {
-                            outRect.set(0, bookshelfMargin, 0, bookshelfMargin + 24)
+                            outRect.set(0, bookshelfMargin, 0, bookshelfMargin + 16)
                         }
                         else -> {
                             outRect.set(0, bookshelfMargin, 0, bookshelfMargin)
