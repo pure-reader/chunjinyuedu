@@ -271,12 +271,16 @@ object ReadBookConfig {
      * 正文顶格、行距放宽到约 1.7 em、段距收窄、页眉放章节名与页码、隐藏正文标题。
      * 只在配置尚未记录当前版本时执行一次，之后用户手动调整不会被覆盖。
      */
-    /** 页眉左侧改用书名，避免与正文首行标题重复；只迁移尚未自定义模板的档案纸配置。 */
+    /** 页眉左侧显示书名与当前章节序号；只迁移尚未自定义模板的档案纸配置。 */
     private fun migrateArchiveHeader(): Boolean {
         val target = configList.firstOrNull { it.name == "档案纸" } ?: return false
         if (target.tipHeaderLeftTemplate != null) return false
-        if (target.tipHeaderLeft != ReadTipConfig.chapterTitle) return false
+        if (target.tipHeaderLeft != ReadTipConfig.chapterTitle &&
+            target.tipHeaderLeft != ReadTipConfig.bookName
+        ) return false
         target.tipHeaderLeft = ReadTipConfig.bookName
+        target.tipHeaderLeftTemplate =
+            "${ReaderInfoTemplate.BOOK_NAME} · 第${ReaderInfoTemplate.CHAPTER}章"
         return true
     }
 
