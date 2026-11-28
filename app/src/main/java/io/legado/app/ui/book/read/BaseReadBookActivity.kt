@@ -5,6 +5,8 @@ import android.animation.ValueAnimator
 import android.app.DatePickerDialog
 import android.content.Context
 import android.content.pm.ActivityInfo
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
@@ -45,6 +47,7 @@ import io.legado.app.ui.book.read.config.BgTextConfigDialog
 import io.legado.app.ui.book.read.config.ClickActionConfigDialog
 import io.legado.app.ui.book.read.config.PaddingConfigDialog
 import io.legado.app.ui.book.read.config.PageKeyDialog
+import io.legado.app.ui.book.read.page.delegate.RelayPageDelegate
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.widget.archive.ArchiveCodeLabel
 import io.legado.app.ui.widget.archive.ArchiveCurtainView
@@ -142,8 +145,9 @@ abstract class BaseReadBookActivity :
     }
 
     /**
-     * 档案风入场：纸幕按水平条带错峰流走，与正文翻页的"档案流动"完全统一。
-     * 时长 620ms，外层线性驱动、条带内部 easeInOutSine——与 RelayPageDelegate 同一套时钟。
+     * 档案风入场：封面和正文各烘一张快照，按 RelayPageDelegate 的同款条带时钟
+     * 交错流动——旧封面逐条向左滑走，新正文逐条从右侧补入。
+     * 时长沿用翻页的 620ms；正文段落边界直接取自当前页，切带位置与翻页一致。
      *
      * 纸幕在 onCreate 就铺上并保持不透明，等首章内容真正落到页面上
      * （ReadBookActivity.upContent 的 relativePosition == 0）再流走，
@@ -186,28 +190,77 @@ abstract class BaseReadBookActivity :
                 book.bookUrl.hashCode().absoluteValue % 100000
             )
         }
-        // 外层线性推进，条带内部的错峰起跑 + easeInOutSine 由 ArchiveCurtainView 自己完成
-        val animator = ValueAnimator.ofFloat(0f, 1f).setDuration(620L)
-        animator.interpolator = LinearInterpolator()
-        animator.addUpdateListener {
-            val progress = it.animatedValue as Float
-            curtain.progress = progress
-            curtain.applyLanding(page)
+        // 封面旧页用正文同色纸底，条带接缝才不会像"抽走一张深色纸"
+        if (ReadBookConfig.bgMeanColor != 0) {
+            curtain.paperColor = ReadBookConfig.bgMeanColor
         }
-        animator.doOnEnd {
-            page.translationX = 0f
-            page.translationY = 0f
+
+        fun finishEntrance() {
+            curtain.releaseFrames()
             content.removeView(curtain)
-            entranceCurtain = null
+            if (entranceCurtain === curtain) {
+                entranceCurtain = null
+                entrancePage = null
+            }
+            entranceAnimator = null
         }
-        animator.doOnCancel {
-            page.translationX = 0f
-            page.translationY = 0f
-            content.removeView(curtain)
-            entranceCurtain = null
+
+        // 等正文这一帧真正落到 View 上再烘快照，否则拿到的是"加载数据中"那页
+        var attempts = 0
+        fun tryCapture() {
+            if (entranceCurtain !== curtain) return
+            val curPage = binding.readView.curPage
+            val ready = curPage.textPage.lineSize > 0 && !curPage.textPage.isMsgPage
+            if (!ready) {
+                if (attempts++ < 75) {
+                    curtain.postDelayed({ tryCapture() }, 16L)
+                } else {
+                    finishEntrance()
+                }
+                return
+            }
+            // 再让 ContentTextView 画完这一帧，避免快照里没有文字
+            page.post {
+                if (entranceCurtain !== curtain) return@post
+                val w = page.width
+                val h = page.height
+                if (w <= 0 || h <= 0) {
+                    finishEntrance()
+                    return@post
+                }
+                val newFrame = try {
+                    Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).also {
+                        page.draw(Canvas(it))
+                    }
+                } catch (e: Throwable) {
+                    null
+                }
+                val oldFrame = curtain.snapshotCover()
+                if (newFrame == null || oldFrame == null) {
+                    newFrame?.recycle()
+                    oldFrame?.recycle()
+                    finishEntrance()
+                    return@post
+                }
+                val bands = RelayPageDelegate.bandsOf(
+                    newFrame, curPage.textPage, curPage.contentTop
+                )
+                curtain.prepare(oldFrame, newFrame, bands)
+
+                // 外层线性推进；settle 曲线与条带内 easeInOutSine 都由幕布复用翻页时钟
+                val animator = ValueAnimator.ofFloat(0f, 1f)
+                    .setDuration(RelayPageDelegate.DURATION.toLong())
+                animator.interpolator = LinearInterpolator()
+                animator.addUpdateListener {
+                    curtain.progress = it.animatedValue as Float
+                }
+                animator.doOnEnd { finishEntrance() }
+                animator.doOnCancel { finishEntrance() }
+                entranceAnimator = animator
+                animator.start()
+            }
         }
-        entranceAnimator = animator
-        animator.start()
+        page.post { tryCapture() }
     }
 
     override fun onDestroy() {

@@ -41,18 +41,142 @@ class RelayPageDelegate(readView: ReadView) : HorizontalPageDelegate(readView) {
 
     companion object {
         /** 轻小说整段转场 620ms */
-        private const val DURATION = 620
+        const val DURATION = 620
 
         /** 条带起跑错峰窗口：页面最深处的条带比最上面晚 18% 的时间出发 */
-        private const val STAGGER = 0.18f
+        const val STAGGER = 0.18f
 
         /** 单条带自身的行程占比 */
-        private const val RUN = 0.80f
+        const val RUN = 0.80f
 
         /** 最早出发的条带也不是第 0 毫秒就走 */
-        private const val LEAD = 0.02f
+        const val LEAD = 0.02f
 
-        private const val MAX_BANDS = 12
+        const val MAX_BANDS = 12
+
+        /**
+         * 单条带的进度：按 rank 错峰起跑，再套 easeInOutSine。
+         * rank 取条带序号而非段落序号，短段与长段得到相同的时间梯度，波浪更均匀。
+         * 入场幕布复用同一套时钟，保证"进入阅读"与"翻页"观感一致。
+         */
+        fun relayProgress(rank: Float, time: Float): Float {
+            val start = LEAD + STAGGER * rank
+            val raw = ((time - start) / RUN).coerceIn(0f, 1f)
+            return (0.5f - 0.5f * cos(PI * raw)).toFloat()
+        }
+
+        /** 松手后剩余行程的缓动；入场没有拖拽段，从 0 起直接套这条曲线 */
+        fun settleFromStart(linear: Float): Float {
+            return 1f - (1f - linear.coerceIn(0f, 1f)).pow(2.2f)
+        }
+
+        /**
+         * 单页的条带边界 = 该页每个段落的起始行。
+         * lineTop 只是候选值（ContentTextView 内部还有一层坐标平移），
+         * 所以再用页面像素的横向投影把候选值吸附到附近最空的一行 ——
+         * 那一行一定是行与行之间或段与段之间，绝不会切在字上。
+         */
+        fun bandsOf(frame: Bitmap?, page: TextPage?, contentTop: Int): IntArray {
+            val height = frame?.height ?: viewHeightFallback()
+            if (height <= 0) return intArrayOf(0)
+            val cuts = TreeSet<Int>()
+            cuts.add(0)
+            cuts.add(height)
+
+            page?.lines?.let { lines ->
+                var lastParagraph = -1
+                for (line in lines) {
+                    val no = line.paragraphNum
+                    if (no <= 0) continue
+                    if (lastParagraph != -1 && no != lastParagraph) {
+                        val y = (line.lineTop + contentTop).toInt()
+                        if (y > height * 0.04f && y < height * 0.96f) cuts.add(y)
+                    }
+                    lastParagraph = no
+                }
+            }
+
+            var list = cuts.toIntArray()
+            if (list.size - 1 > MAX_BANDS) {
+                val picked = IntArray(MAX_BANDS + 1)
+                for (i in 0..MAX_BANDS) picked[i] = list[i * (list.size - 1) / MAX_BANDS]
+                picked[0] = 0
+                picked[MAX_BANDS] = height
+                list = picked
+            }
+            if (list.size < 2) return intArrayOf(0, height)
+
+            val lineHeight = estimateLineHeight(page, height)
+            val minGap = (lineHeight * 0.85f).toInt().coerceAtLeast(24)
+
+            if (frame == null) return list
+            val radius = (lineHeight * 0.8f).toInt().coerceAtLeast(16)
+            for (i in 1 until list.size - 1) {
+                list[i] = snapToBlank(frame, list[i], radius)
+            }
+            // 吸附后可能挤到一起：近邻只留一个，且每条带至少一行高，否则会出现"半行文字"
+            val fixed = ArrayList<Int>(list.size)
+            fixed.add(0)
+            for (i in 1 until list.size - 1) {
+                val y = list[i]
+                if (y - fixed.last() < minGap) continue
+                if (height - y < minGap) continue
+                fixed.add(y)
+            }
+            fixed.add(height)
+            return fixed.toIntArray()
+        }
+
+        /** 行高取页内相邻行间距的中位数，标题行与图片行不参与 */
+        private fun estimateLineHeight(page: TextPage?, height: Int): Float {
+            val gaps = ArrayList<Float>()
+            page?.lines?.let { lines ->
+                for (i in 1 until lines.size) {
+                    val gap = lines[i].lineTop - lines[i - 1].lineTop
+                    if (gap > 8f && gap < height * 0.2f) gaps.add(gap)
+                }
+            }
+            if (gaps.isEmpty()) return height / 24f
+            gaps.sort()
+            return gaps[gaps.size / 2]
+        }
+
+        /**
+         * 在 [y - radius, y + radius] 里找横向投影最空的一行。
+         * 采样列数不用多：一行字几乎每列都有墨，行间空白则整行同色。
+         */
+        private fun snapToBlank(frame: Bitmap, y: Int, radius: Int): Int {
+            val w = frame.width
+            if (w <= 0) return y
+            val from = (y - radius).coerceAtLeast(1)
+            val to = (y + radius).coerceAtMost(frame.height - 2)
+            if (to <= from) return y
+            val step = (w / 48).coerceAtLeast(1)
+            val row = IntArray(w)
+            var bestY = y
+            var bestInk = Int.MAX_VALUE
+            for (rowY in from..to) {
+                frame.getPixels(row, 0, w, 0, rowY, w, 1)
+                var ink = 0
+                var x = 0
+                while (x < w) {
+                    val p = row[x]
+                    val r = (p shr 16) and 0xFF
+                    val g = (p shr 8) and 0xFF
+                    val b = p and 0xFF
+                    // 深色像素视为字迹，纸底和浅色装饰都不计
+                    if (r + g + b < 480) ink++
+                    x += step
+                }
+                if (ink < bestInk) {
+                    bestInk = ink
+                    bestY = rowY
+                }
+            }
+            return bestY
+        }
+
+        private fun viewHeightFallback(): Int = 0
     }
 
     private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
@@ -117,112 +241,6 @@ class RelayPageDelegate(readView: ReadView) : HorizontalPageDelegate(readView) {
         }
     }
 
-    /**
-     * 单页的条带边界 = 该页每个段落的起始行。
-     * lineTop 只是候选值（ContentTextView 内部还有一层坐标平移），
-     * 所以再用页面像素的横向投影把候选值吸附到附近最空的一行 ——
-     * 那一行一定是行与行之间或段与段之间，绝不会切在字上。
-     */
-    private fun bandsOf(frame: Bitmap?, page: TextPage?, contentTop: Int): IntArray {
-        val height = frame?.height ?: viewHeight
-        if (height <= 0) return intArrayOf(0)
-        val cuts = TreeSet<Int>()
-        cuts.add(0)
-        cuts.add(height)
-
-        page?.lines?.let { lines ->
-            var lastParagraph = -1
-            for (line in lines) {
-                val no = line.paragraphNum
-                if (no <= 0) continue
-                if (lastParagraph != -1 && no != lastParagraph) {
-                    val y = (line.lineTop + contentTop).toInt()
-                    if (y > height * 0.04f && y < height * 0.96f) cuts.add(y)
-                }
-                lastParagraph = no
-            }
-        }
-
-        var list = cuts.toIntArray()
-        if (list.size - 1 > MAX_BANDS) {
-            val picked = IntArray(MAX_BANDS + 1)
-            for (i in 0..MAX_BANDS) picked[i] = list[i * (list.size - 1) / MAX_BANDS]
-            picked[0] = 0
-            picked[MAX_BANDS] = height
-            list = picked
-        }
-        if (list.size < 2) return intArrayOf(0, height)
-
-        val lineHeight = estimateLineHeight(page, height)
-        val minGap = (lineHeight * 0.85f).toInt().coerceAtLeast(24)
-
-        if (frame == null) return list
-        val radius = (lineHeight * 0.8f).toInt().coerceAtLeast(16)
-        for (i in 1 until list.size - 1) {
-            list[i] = snapToBlank(frame, list[i], radius)
-        }
-        // 吸附后可能挤到一起：近邻只留一个，且每条带至少一行高，否则会出现"半行文字"
-        val fixed = ArrayList<Int>(list.size)
-        fixed.add(0)
-        for (i in 1 until list.size - 1) {
-            val y = list[i]
-            if (y - fixed.last() < minGap) continue
-            if (height - y < minGap) continue
-            fixed.add(y)
-        }
-        fixed.add(height)
-        return fixed.toIntArray()
-    }
-
-    /** 行高取页内相邻行间距的中位数，标题行与图片行不参与 */
-    private fun estimateLineHeight(page: TextPage?, height: Int): Float {
-        val gaps = ArrayList<Float>()
-        page?.lines?.let { lines ->
-            for (i in 1 until lines.size) {
-                val gap = lines[i].lineTop - lines[i - 1].lineTop
-                if (gap > 8f && gap < height * 0.2f) gaps.add(gap)
-            }
-        }
-        if (gaps.isEmpty()) return height / 24f
-        gaps.sort()
-        return gaps[gaps.size / 2]
-    }
-
-    /**
-     * 在 [y - radius, y + radius] 里找横向投影最空的一行。
-     * 采样列数不用多：一行字几乎每列都有墨，行间空白则整行同色。
-     */
-    private fun snapToBlank(frame: Bitmap, y: Int, radius: Int): Int {
-        val w = frame.width
-        if (w <= 0) return y
-        val from = (y - radius).coerceAtLeast(1)
-        val to = (y + radius).coerceAtMost(frame.height - 2)
-        if (to <= from) return y
-        val step = (w / 48).coerceAtLeast(1)
-        val row = IntArray(w)
-        var bestY = y
-        var bestInk = Int.MAX_VALUE
-        for (rowY in from..to) {
-            frame.getPixels(row, 0, w, 0, rowY, w, 1)
-            var ink = 0
-            var x = 0
-            while (x < w) {
-                val p = row[x]
-                val r = (p shr 16) and 0xFF
-                val g = (p shr 8) and 0xFF
-                val b = p and 0xFF
-                // 深色像素视为字迹，纸底和浅色装饰都不计
-                if (r + g + b < 480) ink++
-                x += step
-            }
-            if (ink < bestInk) {
-                bestInk = ink
-                bestY = rowY
-            }
-        }
-        return bestY
-    }
-
     override fun onDraw(canvas: Canvas) {
         if (!isRunning) return
         val old = oldFrame ?: return
@@ -276,16 +294,6 @@ class RelayPageDelegate(readView: ReadView) : HorizontalPageDelegate(readView) {
             canvas.drawBitmap(frame, srcRect, dstRect, paint)
             canvas.restore()
         }
-    }
-
-    /**
-     * 单条带的进度：按 rank 错峰起跑，再套 easeInOutSine。
-     * rank 取条带序号而非段落序号，短段与长段得到相同的时间梯度，波浪更均匀。
-     */
-    private fun relayProgress(rank: Float, time: Float): Float {
-        val start = LEAD + STAGGER * rank
-        val raw = ((time - start) / RUN).coerceIn(0f, 1f)
-        return (0.5f - 0.5f * cos(PI * raw)).toFloat()
     }
 
     /**
