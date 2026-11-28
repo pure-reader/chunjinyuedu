@@ -3,6 +3,11 @@ package io.legado.app.ui.book.read.page
 import android.content.Context
 import android.graphics.Typeface
 import android.graphics.drawable.LayerDrawable
+import android.os.Build
+import android.text.Layout
+import android.text.TextPaint
+import android.text.TextUtils
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.FrameLayout
@@ -279,11 +284,65 @@ class PageView(context: Context) : FrameLayout(context) {
                 view.isGone = template.isEmpty()
             }
             if (template.isNotEmpty()) {
-                view.setTextIfNotEqual(
-                    ReaderInfoTemplateRenderer.render(template, readerInfoValues)
-                )
+                val rendered = ReaderInfoTemplateRenderer.render(template, readerInfoValues)
+                if (view === binding.tvHeaderLeft) {
+                    fitHeaderLeftText(view, rendered)
+                } else {
+                    view.setTextIfNotEqual(rendered)
+                }
             }
         }
+    }
+
+    /**
+     * 页眉左侧常是「长书名 · 第 N 章」：单行放不下时先轻微缩字，
+     * 缩到下限仍放不下则只省略书名，保住末尾章节序号完整可见。
+     */
+    private fun fitHeaderLeftText(view: BatteryView, text: CharSequence) {
+        val baseSizeSp = ReadTipConfig.tipTextSize.toFloat()
+        val available = (view.width - view.paddingLeft - view.paddingRight).toFloat()
+        if (available <= 0f) {
+            // 首次布局前拿不到宽度，先按原文显示，布局完成后再适配
+            view.setTextIfNotEqual(text)
+            view.post { if (isAttachedToWindow) fitHeaderLeftText(view, view.text) }
+            return
+        }
+        val paint = TextPaint(view.paint)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            paint.letterSpacing = view.letterSpacing
+        }
+        fun widthOf(value: CharSequence, sp: Float): Float {
+            paint.textSize = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_SP, sp, view.resources.displayMetrics
+            )
+            return Layout.getDesiredWidth(value, paint)
+        }
+
+        val minSp = (baseSizeSp - 2f).coerceAtLeast(9f)
+        var sizeSp = baseSizeSp
+        while (sizeSp > minSp && widthOf(text, sizeSp) > available) {
+            sizeSp -= 0.5f
+        }
+        view.textSize = sizeSp
+
+        val finalText = if (widthOf(text, sizeSp) <= available) {
+            text
+        } else {
+            // 缩到下限仍放不下：保留末尾「· 第 N 章」，只省略书名
+            val separator = " · 第"
+            val idx = text.indexOf(separator)
+            if (idx > 0) {
+                val suffix = text.subSequence(idx, text.length)
+                val nameWidth = (available - widthOf(suffix, sizeSp)).coerceAtLeast(1f)
+                val shortened = TextUtils.ellipsize(
+                    text.subSequence(0, idx), paint, nameWidth, TextUtils.TruncateAt.END
+                )
+                TextUtils.concat(shortened, suffix)
+            } else {
+                TextUtils.ellipsize(text, paint, available, TextUtils.TruncateAt.END)
+            }
+        }
+        view.setTextIfNotEqual(finalText)
     }
 
     fun showBookmarkIndicator(show: Boolean) {
